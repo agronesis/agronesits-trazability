@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+@source "../index.html";
+@source "./**/*.{ts,tsx}";
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 145 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 145 25% 10%;
+
+    --primary: 152 55% 30%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 145 20% 92%;
+    --secondary-foreground: 145 25% 15%;
+
+    --muted: 145 10% 93%;
+    --muted-foreground: 145 10% 45%;
+
+    --accent: 145 20% 88%;
+    --accent-foreground: 145 25% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 145 15% 88%;
+    --input: 145 15% 88%;
+    --ring: 152 55% 30%;
+
+    --sidebar: 152 45% 18%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-border: 152 35% 25%;
+    --sidebar-accent: 152 45% 25%;
+    --sidebar-accent-foreground: 0 0% 98%;
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  input, select, textarea {
+    font-size: 1rem;
+  }
+}
+
+@layer components {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+}
