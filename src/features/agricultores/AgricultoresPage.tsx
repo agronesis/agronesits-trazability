@@ -36,9 +36,23 @@ export default function AgricultoresPage() {
   const [aEliminar, setAEliminar] = useState<string | null>(null)
   const canManageAgricultores = hasPermission(roles, APP_PERMISSIONS.AGRICULTORES_MANAGE)
 
-  const filtrados = agricultores.filter((a) =>
-    `${a.nombre} ${a.apellido} ${a.codigo} ${a.dni ?? ''} ${a.numero_cuenta ?? ''} ${a.fecha_alta ?? ''}`.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const q = busqueda.trim().toLowerCase()
+  const filtrados = agricultores
+    .filter((a) =>
+      `${a.nombre} ${a.apellido} ${a.codigo} ${a.dni ?? ''} ${a.numero_cuenta ?? ''} ${a.fecha_alta ?? ''}`
+        .toLowerCase()
+        .includes(q)
+    )
+    .sort((a, b) => {
+      if (!q) return 0
+      const ca = (a.codigo ?? '').toLowerCase()
+      const cb = (b.codigo ?? '').toLowerCase()
+      const score = (c: string) => (c === q ? 0 : c.startsWith(q) ? 1 : 2)
+      const sa = score(ca)
+      const sb = score(cb)
+      if (sa !== sb) return sa - sb
+      return (a.apellido ?? '').localeCompare(b.apellido ?? '')
+    })
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / tamanoPagina))
   const paginaSegura = Math.min(paginaActual, totalPaginas)
@@ -49,6 +63,10 @@ export default function AgricultoresPage() {
   useEffect(() => {
     if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
   }, [paginaActual, totalPaginas])
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [busqueda])
 
   const abrirNuevo = () => {
     if (!canManageAgricultores) return
@@ -214,6 +232,7 @@ export default function AgricultoresPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                <TableHead>Código</TableHead>
                 <TableHead>Agricultor</TableHead>
                 <TableHead>DNI</TableHead>
                 <TableHead>Teléfono</TableHead>
@@ -227,9 +246,9 @@ export default function AgricultoresPage() {
             <TableBody>
               {paginados.map((a) => (
                 <TableRow key={a.id}>
+                  <TableCell className="font-mono text-xs">{a.codigo}</TableCell>
                   <TableCell>
                     <p className="font-medium">{a.apellido}, {a.nombre}</p>
-                    <p className="text-xs text-muted-foreground">{a.codigo}</p>
                   </TableCell>
                   <TableCell>{a.dni || '—'}</TableCell>
                   <TableCell>{a.telefono || '—'}</TableCell>
