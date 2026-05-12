@@ -29,6 +29,19 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['agricultores']['Insert']>
         Relationships: []
       }
+      agricultor_sublotes: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          created_by: string
+          agricultor_id: string
+          nombre: string
+        }
+        Insert: Omit<Database['public']['Tables']['agricultor_sublotes']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['agricultor_sublotes']['Insert']>
+        Relationships: []
+      }
       acopiadores: {
         Row: {
           id: string
@@ -146,6 +159,7 @@ export interface Database {
           num_cubetas: number
           jabas_prestadas: number
           codigo_lote_agricultor: string | null
+          sublote: string | null
           observaciones: string | null
           estado: 'ingresado' | 'en_clasificacion' | 'clasificado' | 'empaquetado' | 'en_despacho' | 'despachado' | 'liquidado'
         }

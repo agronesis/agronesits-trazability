@@ -353,6 +353,16 @@ create table if not exists public.agricultor_producto_hectareas (
   constraint uq_agricultor_producto_hectareas unique (agricultor_id, producto_id)
 );
 
+create table if not exists public.agricultor_sublotes (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  created_by uuid not null references auth.users(id) on delete restrict,
+  agricultor_id uuid not null references public.agricultores(id) on delete cascade,
+  nombre text not null,
+  constraint uq_agricultor_sublote unique (agricultor_id, nombre)
+);
+
 create or replace function public.replace_agricultor_hectareas(
   p_agricultor_id uuid,
   p_created_by uuid,
@@ -488,6 +498,7 @@ begin
 end;
 $$;
 alter table public.lotes add column if not exists codigo_lote_agricultor text null;
+alter table public.lotes add column if not exists sublote text null;
 alter table public.lotes add column if not exists fecha_cosecha date;
 update public.lotes
 set fecha_cosecha = coalesce(fecha_cosecha, fecha_ingreso)
@@ -681,6 +692,7 @@ create index if not exists idx_despacho_pallets_despacho on public.despacho_pall
 create index if not exists idx_despacho_pallets_lote_pallet on public.despacho_pallets(lote_id, numero_pallet);
 create index if not exists idx_agricultor_producto_hectareas_agricultor_id on public.agricultor_producto_hectareas(agricultor_id);
 create index if not exists idx_agricultor_producto_hectareas_producto_id on public.agricultor_producto_hectareas(producto_id);
+create index if not exists idx_agricultor_sublotes_agricultor_id on public.agricultor_sublotes(agricultor_id);
 create index if not exists idx_centros_acopio_codigo on public.centros_acopio(codigo);
 create index if not exists idx_lotes_codigo on public.lotes(codigo);
 create index if not exists idx_lotes_agricultor_id on public.lotes(agricultor_id);
@@ -849,6 +861,9 @@ create trigger trg_productos_updated_at before update on public.productos for ea
 drop trigger if exists trg_agricultor_producto_hectareas_updated_at on public.agricultor_producto_hectareas;
 create trigger trg_agricultor_producto_hectareas_updated_at before update on public.agricultor_producto_hectareas for each row execute function public.set_updated_at();
 
+drop trigger if exists trg_agricultor_sublotes_updated_at on public.agricultor_sublotes;
+create trigger trg_agricultor_sublotes_updated_at before update on public.agricultor_sublotes for each row execute function public.set_updated_at();
+
 drop trigger if exists trg_centros_acopio_protect_codigo on public.centros_acopio;
 create trigger trg_centros_acopio_protect_codigo before update on public.centros_acopio for each row execute function public.protect_centro_acopio_codigo();
 
@@ -893,6 +908,7 @@ alter table public.acopiadores enable row level security;
 alter table public.colaboradores enable row level security;
 alter table public.productos enable row level security;
 alter table public.agricultor_producto_hectareas enable row level security;
+alter table public.agricultor_sublotes enable row level security;
 alter table public.centros_acopio enable row level security;
 alter table public.lotes enable row level security;
 alter table public.clasificaciones enable row level security;
@@ -917,6 +933,9 @@ create policy productos_authenticated_all on public.productos for all to authent
 
 drop policy if exists agricultor_producto_hectareas_authenticated_all on public.agricultor_producto_hectareas;
 create policy agricultor_producto_hectareas_authenticated_all on public.agricultor_producto_hectareas for all to authenticated using (true) with check (auth.uid() is not null);
+
+drop policy if exists agricultor_sublotes_authenticated_all on public.agricultor_sublotes;
+create policy agricultor_sublotes_authenticated_all on public.agricultor_sublotes for all to authenticated using (true) with check (auth.uid() is not null);
 
 drop policy if exists centros_acopio_authenticated_all on public.centros_acopio;
 create policy centros_acopio_authenticated_all on public.centros_acopio for all to authenticated using (true) with check (auth.uid() is not null);

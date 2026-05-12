@@ -28,6 +28,7 @@ export function AgricultorForm({ defaultValues, onSubmit, onCancel, isEditing }:
     numero_cuenta: defaultValues?.numero_cuenta ?? '',
     fecha_alta: defaultValues?.fecha_alta ?? new Date().toISOString().slice(0, 10),
     ubicacion: defaultValues?.ubicacion ?? '',
+    sublotes: defaultValues?.sublotes ?? [],
   }), [defaultValues])
 
   const {
@@ -121,6 +122,28 @@ export function AgricultorForm({ defaultValues, onSubmit, onCancel, isEditing }:
 
       <FormField label="Ubicación" error={errors.ubicacion?.message}>
         <Textarea placeholder="Sector, dirección o referencia..." rows={2} {...register('ubicacion')} />
+      </FormField>
+
+      <FormField label="Sublotes">
+        <Controller
+          name="sublotes"
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              placeholder="Ej: SBL-01, SBL-02"
+              rows={2}
+              value={(field.value ?? []).join(', ')}
+              onChange={(event) => {
+                const parsed = event.target.value
+                  .split(/[\n,;]+/)
+                  .map((value) => value.trim())
+                  .filter(Boolean)
+                field.onChange(parsed)
+              }}
+            />
+          )}
+        />
+        <p className="text-xs text-muted-foreground mt-1">Separar por coma, punto y coma o salto de línea.</p>
       </FormField>
 
       <div className="flex gap-3 justify-end pt-2">

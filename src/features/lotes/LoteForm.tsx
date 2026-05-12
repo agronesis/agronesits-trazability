@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AcopiadorPicker } from '@/components/shared/AcopiadorPicker'
+import { AgricultorPicker } from '@/components/shared/AgricultorPicker'
 import { FormField } from '@/components/shared/FormField'
 import { useAgricultores } from '@/features/agricultores/hooks/useAgricultores'
 import { useAcopiadores } from '@/features/acopiadores/hooks/useAcopiadores'
 import { useProductos } from '@/features/productos/hooks/useProductos'
 import { useCentrosAcopio } from '@/features/centros-acopio/hooks/useCentrosAcopio'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
+import { getAgricultorSublotes } from '@/services/agricultor-sublotes.service'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
 import { format } from 'date-fns'
 
@@ -26,12 +28,18 @@ interface LoteFormProps {
   isEditing?: boolean
 }
 
+function normalizeText(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toUpperCase() : ''
+}
+
 export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteFormProps) {
   const { agricultores } = useAgricultores()
   const { acopiadores } = useAcopiadores()
   const { productos } = useProductos()
   const { centros } = useCentrosAcopio()
   const { colaboradores } = useColaboradores()
+  const [sublotesDisponibles, setSublotesDisponibles] = useState<string[]>([])
+  const [subloteModo, setSubloteModo] = useState<'existente' | 'nuevo'>('nuevo')
 
   const normalizedDefaults = useMemo<Partial<LoteFormInput>>(() => {
     const fechaIngreso = defaultValues?.fecha_ingreso ?? format(new Date(), 'yyyy-MM-dd')
@@ -53,12 +61,13 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
       peso_neto_kg: defaultValues?.peso_neto_kg ?? 0,
       num_cubetas: defaultValues?.num_cubetas,
       jabas_prestadas: defaultValues?.jabas_prestadas,
+      sublote: defaultValues?.sublote ?? '',
       ...defaultValues,
       observaciones: defaultValues?.observaciones ?? '',
     }
   }, [defaultValues])
 
-  const { register, handleSubmit, control, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<LoteFormInput>({
+  const { register, handleSubmit, control, watch, setValue, getValues, reset, formState: { errors, isSubmitting } } = useForm<LoteFormInput>({
     resolver: zodResolver(loteSchema) as any,
     defaultValues: normalizedDefaults,
   })
@@ -71,6 +80,9 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
   const pesoTara = watch('peso_tara_kg')
   const numCubetas = watch('num_cubetas')
   const pesoNeto = watch('peso_neto_kg')
+  const agricultorId = watch('agricultor_id')
+  const codigoLoteAgricultor = watch('codigo_lote_agricultor')
+  const sublote = watch('sublote')
   const pesoPorJaba = calcularPesoPorJaba(
     Number.isFinite(pesoNeto) ? Number(pesoNeto) : 0,
     Number.isFinite(numCubetas) ? Number(numCubetas) : 0,
@@ -83,6 +95,86 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
     const neto = Math.max(bruto - taraJaba * jabas, 0)
     setValue('peso_neto_kg', Number(neto.toFixed(2)), { shouldValidate: true, shouldDirty: true })
   }, [pesoBruto, pesoTara, numCubetas, setValue])
+
+  useEffect(() => {
+    let active = true
+
+    const loadSublotes = async () => {
+      if (!agricultorId) {
+        if (active) {
+          setSublotesDisponibles([])
+          setSubloteModo('nuevo')
+        }
+        return
+      }
+
+      try {
+        const data = await getAgricultorSublotes(agricultorId)
+        if (!active) return
+
+        setSublotesDisponibles(data)
+        const current = normalizeText(getValues('sublote'))
+        if (current && data.includes(current)) {
+          setSubloteModo('existente')
+        } else {
+          setSubloteModo('nuevo')
+        }
+      } catch {
+        if (active) {
+          setSublotesDisponibles([])
+          setSubloteModo('nuevo')
+        }
+      }
+    }
+
+    void loadSublotes()
+
+    return () => {
+      active = false
+    }
+  }, [agricultorId, getValues])
+
+  useEffect(() => {
+    const value = normalizeText(sublote)
+    if (!value) {
+      setSubloteModo('nuevo')
+      return
+    }
+    if (sublotesDisponibles.includes(value)) {
+      setSubloteModo('existente')
+    }
+  }, [sublote, sublotesDisponibles])
+
+  useEffect(() => {
+    if (!agricultorId) return
+
+    const agricultorSeleccionado = agricultores.find((a) => a.id === agricultorId)
+    if (!agricultorSeleccionado) return
+
+    const codigoActual = normalizeText(getValues('codigo_lote_agricultor'))
+    const codigoAgricultor = agricultorSeleccionado.codigo.trim().toUpperCase()
+
+    if (codigoActual !== codigoAgricultor) {
+      setValue('codigo_lote_agricultor', codigoAgricultor, { shouldValidate: true, shouldDirty: true })
+    }
+  }, [agricultorId, agricultores, getValues, setValue])
+
+  useEffect(() => {
+    const codigo = normalizeText(codigoLoteAgricultor)
+    const agricultorActualId = getValues('agricultor_id') ?? ''
+
+    if (!codigo) {
+      if (agricultorActualId) {
+        setValue('agricultor_id', '', { shouldValidate: true, shouldDirty: true })
+      }
+      return
+    }
+
+    const agricultorPorCodigo = agricultores.find((a) => a.codigo.trim().toUpperCase() === codigo)
+    if (agricultorPorCodigo && agricultorPorCodigo.id !== agricultorActualId) {
+      setValue('agricultor_id', agricultorPorCodigo.id, { shouldValidate: true, shouldDirty: true })
+    }
+  }, [codigoLoteAgricultor, agricultores, getValues, setValue])
 
   const agricultoresActivos = agricultores.filter((a) => a.estado === 'activo')
   const recepcionistasActivos = colaboradores.filter((c) => c.estado === 'activo' && c.rol === 'recepcionista')
@@ -98,6 +190,7 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
   return (
     <form onSubmit={handleSubmit(handleValidSubmit as any)} className="flex flex-col gap-4">
       <Input type="hidden" {...register('codigo')} />
+      <Input type="hidden" {...register('sublote')} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Fecha de ingreso" error={errors.fecha_ingreso?.message} required>
@@ -108,23 +201,60 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
           <Input type="date" {...register('fecha_cosecha')} />
         </FormField>
 
-        <FormField label="Código de lote por agricultor" error={errors.codigo_lote_agricultor?.message}>
+        <FormField label="Código de agricultor" error={errors.codigo_lote_agricultor?.message}>
           <Input placeholder="Ej: LOTE-A-001" maxLength={30} {...register('codigo_lote_agricultor')} />
+        </FormField>
+
+        <FormField label="Sublote" error={errors.sublote?.message}>
+          <div className="flex flex-col gap-2">
+            {sublotesDisponibles.length > 0 && (
+              <Select
+                value={subloteModo === 'existente' ? (normalizeText(sublote) || '__none__') : '__new__'}
+                onValueChange={(value) => {
+                  if (value === '__new__' || value === '__none__') {
+                    setSubloteModo('nuevo')
+                    setValue('sublote', '', { shouldValidate: true, shouldDirty: true })
+                    return
+                  }
+
+                  setSubloteModo('existente')
+                  setValue('sublote', value, { shouldValidate: true, shouldDirty: true })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar sublote existente o crear nuevo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__new__">+ Crear nuevo sublote</SelectItem>
+                  {sublotesDisponibles.map((item) => (
+                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {(sublotesDisponibles.length === 0 || subloteModo === 'nuevo') && (
+              <Input
+                placeholder="Ej: SBL-01"
+                maxLength={30}
+                value={typeof sublote === 'string' ? sublote : ''}
+                onChange={(event) => {
+                  setSubloteModo('nuevo')
+                  setValue('sublote', event.target.value, { shouldValidate: true, shouldDirty: true })
+                }}
+              />
+            )}
+          </div>
         </FormField>
 
         <FormField label="Agricultor" error={errors.agricultor_id?.message} required className="sm:col-span-2">
           <Controller name="agricultor_id" control={control} render={({ field }) => (
-            <Select
-              onValueChange={field.onChange}
+            <AgricultorPicker
               value={field.value ?? ''}
-            >
-              <SelectTrigger><SelectValue placeholder="Seleccionar agricultor..." /></SelectTrigger>
-              <SelectContent>
-                {agricultoresActivos.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.apellido}, {a.nombre} ({a.codigo})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={field.onChange}
+              agricultores={agricultoresActivos}
+              error={!!errors.agricultor_id}
+            />
           )} />
         </FormField>
 

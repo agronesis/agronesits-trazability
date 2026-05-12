@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getLotes, createLote, updateLote, actualizarEstadoLote, deleteLote } from '@/services/lotes.service'
 import { logAudit } from '@/services/audit.service'
+import { ensureAgricultorSublote } from '@/services/agricultor-sublotes.service'
 import { useAuthStore } from '@/store/auth.store'
 import type { Lote, EstadoLote } from '@/types/models'
 import type { LoteFormData } from '@/utils/validators'
@@ -25,6 +26,9 @@ export function useLotes() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { acopiador_combined: _c, ...loteData } = data as any
     const nuevo = await createLote(loteData as Parameters<typeof createLote>[0], user.id)
+    if (loteData.agricultor_id && loteData.sublote) {
+      await ensureAgricultorSublote(loteData.agricultor_id, loteData.sublote, user.id)
+    }
     setLotes((prev) => [nuevo, ...prev])
     void logAudit({
       userId: user.id,
@@ -43,6 +47,9 @@ export function useLotes() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { acopiador_combined: _c, ...loteData } = data as any
     const actualizado = await updateLote(id, loteData as Parameters<typeof updateLote>[1])
+    if (user && loteData.agricultor_id && loteData.sublote) {
+      await ensureAgricultorSublote(loteData.agricultor_id, loteData.sublote, user.id)
+    }
     setLotes((prev) => prev.map((l) => (l.id === id ? actualizado : l)))
     return actualizado
   }

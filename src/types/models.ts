@@ -18,6 +18,14 @@ export interface Agricultor extends BaseEntity {
 export type AgricultorInsert = Omit<Agricultor, keyof BaseEntity>
 export type AgricultorUpdate = Partial<AgricultorInsert>
 
+export interface AgricultorSublote extends BaseEntity {
+  agricultor_id: UUID
+  nombre: string
+}
+
+export type AgricultorSubloteInsert = Omit<AgricultorSublote, keyof BaseEntity>
+export type AgricultorSubloteUpdate = Partial<AgricultorSubloteInsert>
+
 export interface Acopiador extends BaseEntity {
   codigo: string
   nombre: string
@@ -111,6 +119,7 @@ export interface Lote extends BaseEntity {
   num_cubetas: number
   jabas_prestadas: number
   codigo_lote_agricultor: string | null
+  sublote: string | null
   observaciones: string | null
   estado: EstadoLote
   // relaciones (join)

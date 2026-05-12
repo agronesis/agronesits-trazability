@@ -79,6 +79,7 @@ export const agricultorSchema = z.object({
   numero_cuenta: z.preprocess(nullableUpperTrim, z.string().max(50, 'Maximo 50 caracteres').nullable()),
   fecha_alta: z.string().min(1, 'Ingrese la fecha de alta'),
   ubicacion: z.preprocess(nullableUpperTrim, z.string().max(200).nullable()),
+  sublotes: z.array(codigoSchema).max(100, 'Demasiados sublotes').optional().default([]),
   estado:    z.enum(['activo', 'inactivo']),
 })
 
@@ -141,6 +142,7 @@ export const loteSchema = z.object({
   num_cubetas:      cantidadEnteraSchema,
   jabas_prestadas:  cantidadEnteraSchema,
   codigo_lote_agricultor: z.preprocess(nullableUpperTrim, z.string().max(30, 'Maximo 30 caracteres').nullable()),
+  sublote: z.preprocess(nullableUpperTrim, z.string().max(30, 'Maximo 30 caracteres').nullable()),
   observaciones:    observacionesSchema,
 }).superRefine((data, ctx) => {
   const totalTara = Number((data.peso_tara_kg * data.num_cubetas).toFixed(2))

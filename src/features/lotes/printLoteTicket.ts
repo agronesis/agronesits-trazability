@@ -67,8 +67,15 @@ export function printLoteTicket(lote: Lote) {
 
           ${lote.codigo_lote_agricultor ? `
           <section class="block">
-            <div class="label">Codigo de lote por agricultor</div>
+            <div class="label">Codigo de agricultor</div>
             <div class="value">${escapeHtml(lote.codigo_lote_agricultor)}</div>
+          </section>
+          ` : ''}
+
+          ${lote.sublote ? `
+          <section class="block">
+            <div class="label">Sublote</div>
+            <div class="value">${escapeHtml(lote.sublote)}</div>
           </section>
           ` : ''}
 

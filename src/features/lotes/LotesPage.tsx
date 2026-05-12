@@ -19,7 +19,7 @@ import { CALIDAD_PRODUCTO_CONFIG, ESTADO_LOTE_CONFIG, TIPO_PRODUCCION_CONFIG, VA
 import { formatFecha, formatPeso } from '@/utils/formatters'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
 import type { LoteFormData } from '@/utils/validators'
-import type { EstadoLote, Lote } from '@/types/models'
+import type { EstadoLote, Lote, VariedadProducto } from '@/types/models'
 import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
 
@@ -29,6 +29,7 @@ export default function LotesPage() {
   const roles = useAuthStore((state) => state.roles)
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<EstadoLote | 'todos'>('todos')
+  const [filtroVariedad, setFiltroVariedad] = useState<VariedadProducto | 'todos'>('todos')
   const [filtroFechaIngreso, setFiltroFechaIngreso] = useState('')
   const [paginaActual, setPaginaActual] = useState(1)
   const [tamanoPagina, setTamanoPagina] = useState(10)
@@ -41,7 +42,7 @@ export default function LotesPage() {
   const canCreateLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
   const canPrintLoteTicket = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_TICKET)
-  const hasFiltrosActivos = busqueda.trim() !== '' || filtroEstado !== 'todos' || filtroFechaIngreso !== ''
+  const hasFiltrosActivos = busqueda.trim() !== '' || filtroEstado !== 'todos' || filtroVariedad !== 'todos' || filtroFechaIngreso !== ''
 
   const getAcopiadorLabel = (lote: Lote) => {
     if (lote.acopiador) return `${lote.acopiador.apellido}, ${lote.acopiador.nombre}`
@@ -50,10 +51,11 @@ export default function LotesPage() {
   }
 
   const filtrados = lotes.filter((l) => {
-    const coincideBusqueda = `${l.codigo} ${l.agricultor?.nombre ?? ''} ${l.agricultor?.apellido ?? ''} ${l.acopiador?.nombre ?? ''} ${l.acopiador?.apellido ?? ''}`.toLowerCase().includes(busqueda.toLowerCase())
+    const coincideBusqueda = `${l.codigo} ${l.codigo_lote_agricultor ?? ''} ${l.sublote ?? ''} ${l.agricultor?.nombre ?? ''} ${l.agricultor?.apellido ?? ''} ${l.acopiador?.nombre ?? ''} ${l.acopiador?.apellido ?? ''}`.toLowerCase().includes(busqueda.toLowerCase())
     const coincideEstado = filtroEstado === 'todos' || l.estado === filtroEstado
+    const coincideVariedad = filtroVariedad === 'todos' || l.producto?.variedad === filtroVariedad
     const coincideFechaIngreso = !filtroFechaIngreso || l.fecha_ingreso === filtroFechaIngreso
-    return coincideBusqueda && coincideEstado && coincideFechaIngreso
+    return coincideBusqueda && coincideEstado && coincideVariedad && coincideFechaIngreso
   })
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / tamanoPagina))
@@ -143,6 +145,24 @@ export default function LotesPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={filtroVariedad}
+          onValueChange={(v) => {
+            setFiltroVariedad(v as VariedadProducto | 'todos')
+            setPaginaActual(1)
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-48">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas las variedades</SelectItem>
+            {Object.entries(VARIEDAD_PRODUCTO_CONFIG).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Input
           type="date"
           className="w-full sm:w-48"
@@ -174,6 +194,7 @@ export default function LotesPage() {
           onClick={() => {
             setBusqueda('')
             setFiltroEstado('todos')
+            setFiltroVariedad('todos')
             setFiltroFechaIngreso('')
             setPaginaActual(1)
           }}
@@ -198,18 +219,15 @@ export default function LotesPage() {
               onClick={() => navigate(`/lotes/${l.id}`)}
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-sm">{l.codigo}</span>
-                  <EstadoLoteBadge estado={l.estado} />
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {l.agricultor?.apellido}, {l.agricultor?.nombre} · {l.producto?.nombre}
+                <p className="text-sm font-bold mt-0.5">
+                  {l.codigo_lote_agricultor ?? 'SIN CODIGO DE AGRICULTOR'}{l.sublote ? ` - ${l.sublote}` : ''}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {l.centro_acopio?.nombre} · Ingreso: {formatFecha(l.fecha_ingreso)} · Cosecha: {formatFecha(l.fecha_cosecha)} · N° JABAS: {l.num_cubetas} · Bruto: {formatPeso(l.peso_bruto_kg)} · Tara: {formatPeso(l.peso_tara_kg)} · Neto: {formatPeso(l.peso_neto_kg)} · Peso/jaba: {formatPeso(calcularPesoPorJaba(l.peso_neto_kg, l.num_cubetas))}
+                <p className="text-sm text-muted-foreground">
+                  {l.agricultor?.apellido}, {l.agricultor?.nombre} - {l.producto ? VARIEDAD_PRODUCTO_CONFIG[l.producto.variedad].label : '-'} - {formatFecha(l.fecha_ingreso)}
                 </p>
               </div>
-              <div className="flex gap-1.5 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
+                <EstadoLoteBadge estado={l.estado} />
                 {canPrintLoteTicket && (
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); printLoteTicket(l) }}>
                     <Printer className="h-4 w-4" />
@@ -286,8 +304,14 @@ export default function LotesPage() {
                 </div>
                 {ticketLote.codigo_lote_agricultor && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Código de lote por agricultor</p>
+                    <p className="text-xs text-muted-foreground">Código de agricultor</p>
                     <p className="font-medium">{ticketLote.codigo_lote_agricultor}</p>
+                  </div>
+                )}
+                {ticketLote.sublote && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Sublote</p>
+                    <p className="font-medium">{ticketLote.sublote}</p>
                   </div>
                 )}
                 <div>

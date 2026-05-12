@@ -45,7 +45,7 @@ function getFieldLotCode(lote: Lote): string {
  *   083 = juliano de cosecha (campo del lote)
  *   1   = día de semana de empaque/despacho (lunes=1 ... domingo=7)
  *   CA  = iniciales del agricultor (nombre[0] + apellido[0])
- *   ... = código de lote por agricultor completo (segmento lote de campo)
+ *   ... = código de agricultor completo (segmento lote de campo)
  *   H1  = tipo de producto (fijo por ahora)
  *   AG  = código fijo del exportador
  */

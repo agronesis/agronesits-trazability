@@ -121,7 +121,7 @@ export default function LoteDetallePage() {
     <div className="max-w-5xl mx-auto">
       <PageHeader
         title={`Lote ${lote.codigo}`}
-        description={`${lote.centro_acopio?.nombre ?? '-'} · ${formatFecha(lote.fecha_ingreso)}${lote.codigo_lote_agricultor ? ` · Cod. agricultor: ${lote.codigo_lote_agricultor}` : ''} · N° JABAS INGRESADAS: ${lote.num_cubetas}${lote.jabas_prestadas > 0 ? ` · Jabas prestadas: ${lote.jabas_prestadas}` : ''} · Bruto: ${formatPeso(lote.peso_bruto_kg)} · Tara: ${formatPeso(lote.peso_tara_kg)} · Neto: ${formatPeso(lote.peso_neto_kg)} · Peso/jaba: ${formatPeso(pesoPorJaba)}`}
+        description={`${lote.centro_acopio?.nombre ?? '-'} · ${formatFecha(lote.fecha_ingreso)}${lote.codigo_lote_agricultor ? ` · Cod. agricultor: ${lote.codigo_lote_agricultor}` : ''}${lote.sublote ? ` · Sublote: ${lote.sublote}` : ''} · N° JABAS INGRESADAS: ${lote.num_cubetas}${lote.jabas_prestadas > 0 ? ` · Jabas prestadas: ${lote.jabas_prestadas}` : ''} · Bruto: ${formatPeso(lote.peso_bruto_kg)} · Tara: ${formatPeso(lote.peso_tara_kg)} · Neto: ${formatPeso(lote.peso_neto_kg)} · Peso/jaba: ${formatPeso(pesoPorJaba)}`}
         backHref={ROUTES.LOTES}
         actions={
           <div className="flex gap-2">
@@ -238,8 +238,14 @@ export default function LoteDetallePage() {
                   <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Logística</p>
                   {lote.codigo_lote_agricultor && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Código de lote por agricultor</p>
+                      <p className="text-xs text-muted-foreground">Código de agricultor</p>
                       <p className="font-medium">{lote.codigo_lote_agricultor}</p>
+                    </div>
+                  )}
+                  {lote.sublote && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Sublote</p>
+                      <p className="font-medium">{lote.sublote}</p>
                     </div>
                   )}
                   <div>

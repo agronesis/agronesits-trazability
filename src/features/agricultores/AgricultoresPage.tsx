@@ -3,6 +3,7 @@ import { Plus, Search, Pencil, Trash2, Phone, MapPin, LayoutGrid, List } from 'l
 import { useAgricultores } from './hooks/useAgricultores'
 import { AgricultorForm } from './AgricultorForm'
 import { getAgricultor } from '@/services/agricultores.service'
+import { getAgricultorSublotes } from '@/services/agricultor-sublotes.service'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
@@ -26,7 +27,7 @@ export default function AgricultoresPage() {
   const roles = useAuthStore((state) => state.roles)
   const [busqueda, setBusqueda] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editando, setEditando] = useState<Agricultor | null>(null)
+  const [editando, setEditando] = useState<(Agricultor & { sublotes?: string[] }) | null>(null)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [dialogLoading, setDialogLoading] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
@@ -86,8 +87,11 @@ export default function AgricultoresPage() {
     setDialogLoading(true)
 
     try {
-      const detalle = await getAgricultor(a.id)
-      setEditando(detalle)
+      const [detalle, sublotes] = await Promise.all([
+        getAgricultor(a.id),
+        getAgricultorSublotes(a.id),
+      ])
+      setEditando({ ...detalle, sublotes })
     } catch (e) {
       setDialogError((e as Error).message)
     } finally {
