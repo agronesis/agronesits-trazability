@@ -395,10 +395,6 @@ export default function ClasificarLotePage() {
         }
       }
 
-      if (lote.estado === 'ingresado') {
-        await actualizarEstadoLote(lote.id, 'en_clasificacion')
-      }
-
       if (finalizarDespues) {
         await actualizarEstadoLote(lote.id, 'clasificado')
         void logAudit({

@@ -152,7 +152,7 @@ export default function NuevoDespachoPage() {
               modulo: 'lotes',
               registroId: lote.id,
               descripcion: `Lote despachado: ${lote.codigo}`,
-              datosAnteriores: { estado: 'en_despacho' },
+              datosAnteriores: { estado: 'empaquetado' },
               datosNuevos: { estado: 'despachado' },
             })
           }

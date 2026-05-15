@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Centros de Acopio',  href: ROUTES.CENTROS_ACOPIO,        icon: Warehouse,     group: 'Maestros' },
   // Operaciones
   { label: 'Lotes',              href: ROUTES.LOTES,                 icon: Layers,        group: 'Operaciones' },
+  { label: 'Empaquetado',        href: ROUTES.EMPAQUETADO_OPERACIONES, icon: Package,     group: 'Operaciones' },
   { label: 'Despachos',          href: ROUTES.DESPACHOS,             icon: Truck,         group: 'Operaciones' },
   { label: 'Cubetas',            href: ROUTES.CUBETAS,               icon: Package,       group: 'Operaciones', featureKey: 'CUBETAS' },
   // Liquidaciones

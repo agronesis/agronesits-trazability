@@ -7,13 +7,11 @@ export const APP_VERSION = '1.0.0'
 
 // Estados y sus etiquetas/colores para UI
 export const ESTADO_LOTE_CONFIG = {
-  ingresado:        { label: 'Ingresado',            color: 'bg-blue-100 text-blue-800' },
-  en_clasificacion: { label: 'Clasificando',          color: 'bg-yellow-100 text-yellow-800' },
-  clasificado:      { label: 'Clasificado',           color: 'bg-purple-100 text-purple-800' },
-  empaquetado:      { label: 'Empaquetado',           color: 'bg-indigo-100 text-indigo-800' },
-  en_despacho:      { label: 'Por Despachar',         color: 'bg-orange-100 text-orange-800' },
-  despachado:       { label: 'Despachado',             color: 'bg-green-100 text-green-800' },
-  liquidado:        { label: 'Liquidado',             color: 'bg-gray-100 text-gray-700' },
+  ingresado:   { label: 'Ingresado',  color: 'bg-blue-100 text-blue-800' },
+  clasificado: { label: 'Clasificado', color: 'bg-purple-100 text-purple-800' },
+  empaquetado: { label: 'Empaquetado', color: 'bg-indigo-100 text-indigo-800' },
+  despachado:  { label: 'Despachado',  color: 'bg-green-100 text-green-800' },
+  liquidado:   { label: 'Liquidado',  color: 'bg-gray-100 text-gray-700' },
 } as const
 
 export const ESTADO_LIQUIDACION_CONFIG = {
@@ -68,13 +66,11 @@ export const ROL_COLABORADOR_CONFIG = {
 
 // Transiciones válidas de estado de lote
 export const TRANSICIONES_LOTE: Record<string, string[]> = {
-  ingresado:        ['en_clasificacion'],
-  en_clasificacion: ['clasificado'],
-  clasificado:      ['empaquetado'],
-  empaquetado:      ['en_despacho'],
-  en_despacho:      ['despachado'],
-  despachado:       ['liquidado'],
-  liquidado:        [],
+  ingresado:   ['clasificado'],
+  clasificado: ['empaquetado'],
+  empaquetado: ['despachado'],
+  despachado:  ['liquidado'],
+  liquidado:   [],
 }
 
 // Rutas del sistema
@@ -97,6 +93,8 @@ export const ROUTES = {
   LOTES_DETALLE:            '/lotes/:id',
   CLASIFICACIONES:          '/lotes/:id/clasificar',
   EMPAQUETAR:              '/lotes/:id/empaquetar',
+  EMPAQUETADO_OPERACIONES:  '/operaciones/empaquetado',
+  EMPAQUETAR_DIA:           '/operaciones/empaquetado/dia/:fecha',
   LIQUIDACIONES_AGRI:       '/liquidaciones/agricultores',
   LIQUIDACIONES_AGRI_NUEVA: '/liquidaciones/agricultores/nueva',
   LIQUIDACIONES_AGRI_DETALLE: '/liquidaciones/agricultores/:id',

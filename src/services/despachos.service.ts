@@ -162,13 +162,13 @@ async function verificarYActualizarEstadoLotes(loteIds: string[]): Promise<void>
     const des = palletsDes[loteId] ?? new Set<string>()
     if (emp.size === 0) continue
     const todosEnDespacho = emp.size > 0 && [...emp].every(p => des.has(p))
-    const nuevoEstado = todosEnDespacho ? 'despachado' : 'en_despacho'
+    const nuevoEstado = todosEnDespacho ? 'despachado' : 'empaquetado'
 
     await supabase
       .from('lotes')
       .update({ estado: nuevoEstado, updated_at: new Date().toISOString() })
       .eq('id', loteId)
-      .in('estado', ['empaquetado', 'en_despacho', 'despachado'])
+      .in('estado', ['empaquetado', 'despachado'])
   }
 }
 

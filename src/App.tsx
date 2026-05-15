@@ -16,7 +16,8 @@ import CentrosAcopioPage from '@/features/centros-acopio/CentrosAcopioPage'
 import LotesPage from '@/features/lotes/LotesPage'
 import LoteDetallePage from '@/features/lotes/LoteDetallePage'
 import ClasificarLotePage from '@/features/lotes/ClasificarLotePage'
-import EmpaquetarLotePage from '@/features/lotes/EmpaquetarLotePage'
+import EmpaquetadoOperacionPage from '@/features/lotes/EmpaquetadoOperacionPage'
+import EmpaquetarDiaPage from '@/features/lotes/EmpaquetarDiaPage'
 import DespachosPage from '@/features/despachos/DespachosPage'
 import NuevoDespachoPage from '@/features/despachos/NuevoDespachoPage'
 import DetalleDespachoPage from '@/features/despachos/DetalleDespachoPage'
@@ -57,7 +58,9 @@ export default function App() {
             <Route path={ROUTES.LOTES} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_VIEW}><LotesPage /></ProtectedRoute>} />
             <Route path={ROUTES.LOTES_DETALLE} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_VIEW}><LoteDetallePage /></ProtectedRoute>} />
             <Route path={ROUTES.CLASIFICACIONES} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_PROCESS}><ClasificarLotePage /></ProtectedRoute>} />
-            <Route path={ROUTES.EMPAQUETAR} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_PROCESS}><EmpaquetarLotePage /></ProtectedRoute>} />
+            <Route path={ROUTES.EMPAQUETAR} element={<Navigate to={ROUTES.EMPAQUETADO_OPERACIONES} replace />} />
+            <Route path={ROUTES.EMPAQUETADO_OPERACIONES} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_PROCESS}><EmpaquetadoOperacionPage /></ProtectedRoute>} />
+            <Route path={ROUTES.EMPAQUETAR_DIA} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_PROCESS}><EmpaquetarDiaPage /></ProtectedRoute>} />
             <Route path={ROUTES.DESPACHOS} element={<ProtectedRoute permission={APP_PERMISSIONS.DESPACHOS_VIEW}><DespachosPage /></ProtectedRoute>} />
             <Route path={ROUTES.DESPACHOS_NUEVO} element={<ProtectedRoute permission={APP_PERMISSIONS.LOTES_DISPATCH}><NuevoDespachoPage /></ProtectedRoute>} />
             <Route path={ROUTES.DESPACHOS_DETALLE} element={<ProtectedRoute permission={APP_PERMISSIONS.DESPACHOS_VIEW}><DetalleDespachoPage /></ProtectedRoute>} />

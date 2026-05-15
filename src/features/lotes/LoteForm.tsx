@@ -67,7 +67,7 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
     }
   }, [defaultValues])
 
-  const { register, handleSubmit, control, watch, setValue, getValues, reset, formState: { errors, isSubmitting } } = useForm<LoteFormInput>({
+  const { register, handleSubmit, control, watch, setValue, getValues, reset, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<LoteFormInput>({
     resolver: zodResolver(loteSchema) as any,
     defaultValues: normalizedDefaults,
   })
@@ -165,16 +165,30 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
 
     if (!codigo) {
       if (agricultorActualId) {
-        setValue('agricultor_id', '', { shouldValidate: true, shouldDirty: true })
+        setValue('agricultor_id', '', { shouldValidate: false, shouldDirty: true })
       }
+      clearErrors('agricultor_id')
       return
     }
 
     const agricultorPorCodigo = agricultores.find((a) => a.codigo.trim().toUpperCase() === codigo)
-    if (agricultorPorCodigo && agricultorPorCodigo.id !== agricultorActualId) {
+    if (!agricultorPorCodigo) {
+      if (agricultorActualId) {
+        setValue('agricultor_id', '', { shouldValidate: false, shouldDirty: true })
+      }
+      setError('agricultor_id', {
+        type: 'validate',
+        message: 'No existe un agricultor con ese código',
+      })
+      return
+    }
+
+    clearErrors('agricultor_id')
+
+    if (agricultorPorCodigo.id !== agricultorActualId) {
       setValue('agricultor_id', agricultorPorCodigo.id, { shouldValidate: true, shouldDirty: true })
     }
-  }, [codigoLoteAgricultor, agricultores, getValues, setValue])
+  }, [clearErrors, codigoLoteAgricultor, agricultores, getValues, setError, setValue])
 
   const agricultoresActivos = agricultores.filter((a) => a.estado === 'activo')
   const recepcionistasActivos = colaboradores.filter((c) => c.estado === 'activo' && c.rol === 'recepcionista')

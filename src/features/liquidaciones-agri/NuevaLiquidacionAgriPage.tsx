@@ -35,7 +35,7 @@ function normalizeSearchText(value: string): string {
     .trim()
 }
 
-const ESTADOS_LOTE_LIQUIDABLES = new Set<EstadoLote>(['clasificado', 'empaquetado', 'en_despacho', 'despachado'])
+const ESTADOS_LOTE_LIQUIDABLES = new Set<EstadoLote>(['clasificado', 'empaquetado', 'despachado'])
 
 const detalleSchema = z.object({
   lote_id:             z.string().uuid(),

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Lote, LoteInsert, LoteUpdate } from '@/types/models'
+import type { Agricultor, Clasificacion, EstadoLote, Lote, LoteInsert, LoteUpdate, Producto } from '@/types/models'
 
 const TABLE = 'lotes' as const
 const SELECT_COMPLETO = `
@@ -12,6 +12,14 @@ const SELECT_COMPLETO = `
   centro_acopio:centros_acopio(*)
 `
 
+export interface LoteEmpaquetadoOperacionRow extends Pick<Lote, 'id' | 'codigo' | 'fecha_ingreso' | 'fecha_cosecha' | 'estado' | 'codigo_lote_agricultor' | 'sublote'> {
+  estado: EstadoLote
+  agricultor: Pick<Agricultor, 'id' | 'nombre' | 'apellido'> | null
+  producto: Pick<Producto, 'id' | 'nombre' | 'variedad'> | null
+  clasificaciones: Array<Pick<Clasificacion, 'id' | 'peso_bueno_kg'>> | null
+  empaquetados: Array<{ num_cajas: number | null }> | null
+}
+
 export async function getLotes(): Promise<Lote[]> {
   const { data, error } = await supabase
     .from(TABLE)
@@ -20,6 +28,29 @@ export async function getLotes(): Promise<Lote[]> {
 
   if (error) throw new Error(error.message)
   return data as unknown as Lote[]
+}
+
+export async function getLotesEmpaquetadoOperacion(fechaIngreso: string): Promise<LoteEmpaquetadoOperacionRow[]> {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(`
+      id,
+      codigo,
+      fecha_ingreso,
+      fecha_cosecha,
+      estado,
+      codigo_lote_agricultor,
+      sublote,
+      agricultor:agricultores!lotes_agricultor_id_fkey(id, nombre, apellido),
+      producto:productos(id, nombre, variedad),
+      clasificaciones(id, peso_bueno_kg),
+      empaquetados(num_cajas)
+    `)
+    .eq('fecha_ingreso', fechaIngreso)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data ?? []) as unknown as LoteEmpaquetadoOperacionRow[]
 }
 
 export async function getLote(id: string): Promise<Lote> {

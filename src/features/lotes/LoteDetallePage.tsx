@@ -133,7 +133,7 @@ export default function LoteDetallePage() {
                 <Printer className="h-4 w-4" /> Imprimir ticket
               </Button>
             )}
-            {canProcessLote && (lote.estado === 'ingresado' || lote.estado === 'en_clasificacion') && (
+            {canProcessLote && lote.estado === 'ingresado' && (
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
                 onClick={() => navigate(`/lotes/${id}/clasificar`)}
@@ -141,36 +141,12 @@ export default function LoteDetallePage() {
                 Clasificar
               </Button>
             )}
-            {canProcessLote && lote.estado === 'clasificado' && (
-              <Button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm"
-                onClick={() => navigate(`/lotes/${id}/empaquetar`)}
-              >
-                Empaquetar
-              </Button>
-            )}
-            {canProcessLote && lote.estado === 'empaquetado' && (
-              <Button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm"
-                onClick={() => navigate(`/lotes/${id}/empaquetar`)}
-              >
-                Empaquetar
-              </Button>
-            )}
-            {canDispatchLote && lote.estado === 'en_despacho' && (
+            {canDispatchLote && lote.estado === 'empaquetado' && (
               <Button
                 className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-sm"
                 onClick={() => navigate(ROUTES.DESPACHOS_NUEVO)}
               >
                 Registrar despacho
-              </Button>
-            )}
-            {canDispatchLote && lote.estado === 'despachado' && (
-              <Button
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-sm"
-                onClick={() => navigate(`/liquidaciones/agricultores/nueva?agricultor_id=${lote.agricultor_id}`)}
-              >
-                Crear liquidación
               </Button>
             )}
           </div>

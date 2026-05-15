@@ -96,10 +96,8 @@ export type CentroAcopioUpdate = Partial<CentroAcopioInsert>
 // ─────────────────────────────────────────────
 export type EstadoLote =
   | 'ingresado'
-  | 'en_clasificacion'
   | 'clasificado'
   | 'empaquetado'
-  | 'en_despacho'
   | 'despachado'
   | 'liquidado'
 

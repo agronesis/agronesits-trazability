@@ -9,7 +9,7 @@ import type { EstadoLote, EstadoLiquidacion, CategoriaClasificacion, TipoMovimie
 
 interface EstadoLoteBadgeProps { estado: EstadoLote }
 export function EstadoLoteBadge({ estado }: EstadoLoteBadgeProps) {
-  const config = ESTADO_LOTE_CONFIG[estado]
+  const config = ESTADO_LOTE_CONFIG[estado] ?? { label: estado, color: 'bg-gray-100 text-gray-700' }
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${config.color}`}>{config.label}</span>
 }
 
