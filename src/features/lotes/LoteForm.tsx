@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Pencil, Plus } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,14 +11,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AcopiadorPicker } from '@/components/shared/AcopiadorPicker'
 import { AgricultorPicker } from '@/components/shared/AgricultorPicker'
 import { FormField } from '@/components/shared/FormField'
+import { Spinner } from '@/components/shared/Spinner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { AgricultorForm } from '@/features/agricultores/AgricultorForm'
 import { useAgricultores } from '@/features/agricultores/hooks/useAgricultores'
 import { useAcopiadores } from '@/features/acopiadores/hooks/useAcopiadores'
 import { useProductos } from '@/features/productos/hooks/useProductos'
 import { useCentrosAcopio } from '@/features/centros-acopio/hooks/useCentrosAcopio'
 import { useColaboradores } from '@/features/colaboradores/hooks/useColaboradores'
 import { getAgricultorSublotes } from '@/services/agricultor-sublotes.service'
+import { getAgricultor } from '@/services/agricultores.service'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
 import { format } from 'date-fns'
+import type { Agricultor } from '@/types/models'
+import type { AgricultorFormData } from '@/utils/validators'
+import { useAuthStore } from '@/store/auth.store'
+import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
 
 type LoteFormInput = z.input<typeof loteSchema>
 
@@ -33,13 +47,20 @@ function normalizeText(value: unknown): string {
 }
 
 export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteFormProps) {
-  const { agricultores } = useAgricultores()
+  const roles = useAuthStore((state) => state.roles)
+  const { agricultores, crear: crearAgricultor, actualizar: actualizarAgricultor } = useAgricultores()
   const { acopiadores } = useAcopiadores()
   const { productos } = useProductos()
   const { centros } = useCentrosAcopio()
   const { colaboradores } = useColaboradores()
   const [sublotesDisponibles, setSublotesDisponibles] = useState<string[]>([])
   const [subloteModo, setSubloteModo] = useState<'existente' | 'nuevo'>('nuevo')
+  const [agricultorDialogOpen, setAgricultorDialogOpen] = useState(false)
+  const [agricultorDialogLoading, setAgricultorDialogLoading] = useState(false)
+  const [agricultorDialogError, setAgricultorDialogError] = useState<string | null>(null)
+  const [agricultorEditandoId, setAgricultorEditandoId] = useState<string | null>(null)
+  const [agricultorEditando, setAgricultorEditando] = useState<(Agricultor & { sublotes?: string[] }) | null>(null)
+  const canManageAgricultores = hasPermission(roles, APP_PERMISSIONS.AGRICULTORES_MANAGE)
 
   const normalizedDefaults = useMemo<Partial<LoteFormInput>>(() => {
     const fechaIngreso = defaultValues?.fecha_ingreso ?? format(new Date(), 'yyyy-MM-dd')
@@ -83,6 +104,7 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
   const agricultorId = watch('agricultor_id')
   const codigoLoteAgricultor = watch('codigo_lote_agricultor')
   const sublote = watch('sublote')
+  const agricultorSeleccionado = agricultores.find((a) => a.id === agricultorId) ?? null
   const pesoPorJaba = calcularPesoPorJaba(
     Number.isFinite(pesoNeto) ? Number(pesoNeto) : 0,
     Number.isFinite(numCubetas) ? Number(numCubetas) : 0,
@@ -196,6 +218,59 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
   const productosActivos = productos
   const centrosActivos = centros.filter((c) => c.estado === 'activo')
 
+  const cerrarDialogAgricultor = () => {
+    setAgricultorDialogOpen(false)
+    setAgricultorDialogLoading(false)
+    setAgricultorDialogError(null)
+    setAgricultorEditandoId(null)
+    setAgricultorEditando(null)
+  }
+
+  const abrirNuevoAgricultor = () => {
+    if (!canManageAgricultores) return
+    setAgricultorDialogError(null)
+    setAgricultorDialogLoading(false)
+    setAgricultorEditandoId(null)
+    setAgricultorEditando(null)
+    setAgricultorDialogOpen(true)
+  }
+
+  const abrirEditarAgricultor = async () => {
+    if (!canManageAgricultores || !agricultorId) return
+
+    setAgricultorDialogOpen(true)
+    setAgricultorDialogError(null)
+    setAgricultorDialogLoading(true)
+    setAgricultorEditandoId(agricultorId)
+    setAgricultorEditando(null)
+
+    try {
+      const [detalle, sublotes] = await Promise.all([
+        getAgricultor(agricultorId),
+        getAgricultorSublotes(agricultorId),
+      ])
+      setAgricultorEditando({ ...detalle, sublotes })
+    } catch (e) {
+      setAgricultorDialogError((e as Error).message)
+    } finally {
+      setAgricultorDialogLoading(false)
+    }
+  }
+
+  const handleSubmitAgricultor = async (data: AgricultorFormData) => {
+    try {
+      const guardado = agricultorEditandoId
+        ? await actualizarAgricultor(agricultorEditandoId, data)
+        : await crearAgricultor(data)
+
+      setValue('agricultor_id', guardado.id, { shouldValidate: true, shouldDirty: true })
+      setValue('codigo_lote_agricultor', guardado.codigo.trim().toUpperCase(), { shouldValidate: true, shouldDirty: true })
+      cerrarDialogAgricultor()
+    } catch (e) {
+      setAgricultorDialogError((e as Error).message)
+    }
+  }
+
   const handleValidSubmit = async (data: LoteFormInput) => {
     const { acopiador_combined: _c, ...rest } = loteSchema.parse(data) as any
     await onSubmit(rest as LoteFormData)
@@ -262,14 +337,35 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
         </FormField>
 
         <FormField label="Agricultor" error={errors.agricultor_id?.message} required className="sm:col-span-2">
-          <Controller name="agricultor_id" control={control} render={({ field }) => (
-            <AgricultorPicker
-              value={field.value ?? ''}
-              onChange={field.onChange}
-              agricultores={agricultoresActivos}
-              error={!!errors.agricultor_id}
-            />
-          )} />
+          <div className="space-y-2">
+            <Controller name="agricultor_id" control={control} render={({ field }) => (
+              <AgricultorPicker
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                agricultores={agricultoresActivos}
+                error={!!errors.agricultor_id}
+              />
+            )} />
+            {canManageAgricultores && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={abrirNuevoAgricultor}>
+                  <Plus className="h-4 w-4" /> Nuevo agricultor
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void abrirEditarAgricultor()}
+                  disabled={!agricultorSeleccionado}
+                >
+                  <Pencil className="h-4 w-4" /> Editar agricultor
+                </Button>
+                {agricultorSeleccionado && (
+                  <p className="text-xs text-muted-foreground">Seleccionado: {agricultorSeleccionado.apellido}, {agricultorSeleccionado.nombre} ({agricultorSeleccionado.codigo})</p>
+                )}
+              </div>
+            )}
+          </div>
         </FormField>
 
         <FormField label="Nombre del recepcionista" error={errors.recepcionista_id?.message} required className="sm:col-span-2">
@@ -411,6 +507,30 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancelar</Button>
         <Button type="submit" loading={isSubmitting}>{isEditing ? 'Guardar cambios' : 'Registrar lote'}</Button>
       </div>
+
+      {canManageAgricultores && (
+        <Dialog open={agricultorDialogOpen} onOpenChange={(open) => { if (!open) cerrarDialogAgricultor() }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{agricultorEditandoId ? 'Editar agricultor' : 'Nuevo agricultor'}</DialogTitle>
+            </DialogHeader>
+            {agricultorDialogLoading ? (
+              <div className="flex min-h-40 items-center justify-center">
+                <Spinner />
+              </div>
+            ) : agricultorDialogError ? (
+              <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">{agricultorDialogError}</p>
+            ) : (
+              <AgricultorForm
+                defaultValues={agricultorEditando ?? undefined}
+                onSubmit={handleSubmitAgricultor}
+                onCancel={cerrarDialogAgricultor}
+                isEditing={!!agricultorEditandoId}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </form>
   )
 }

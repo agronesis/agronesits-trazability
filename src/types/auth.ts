@@ -4,6 +4,7 @@ export const APP_ROLES = {
   ADMIN: 'admin',
   GERENCIA: 'gerencia',
   ADMINISTRADOR_PLANTA: 'administrador_planta',
+  PADRON_AGRICULTORES: 'padron_agricultores',
   TESORERIA: 'tesoreria',
   OPERATIVO_RECEPCION: 'operativo_recepcion',
   OPERATIVO_PLANTA: 'operativo_planta',
