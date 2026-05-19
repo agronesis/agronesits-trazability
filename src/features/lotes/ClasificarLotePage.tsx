@@ -288,11 +288,7 @@ export default function ClasificarLotePage() {
     const hayBrutoPrincipalMayorQueBrutoLote = metricasFilas.some((item) => item.kgBruto > brutoLote)
     const hayBrutoDescarteMayorQueBrutoLote = metricasFilas.some((item) => item.kgBrutoDescarte > brutoLote)
     const totalBrutoRegistrado = metricasFilas.reduce((acc, item) => acc + item.kgBruto + item.kgBrutoDescarte, 0)
-
-    const hayBrutoMayorQueNeto = filasActuales.some((f) => {
-      const bruto = parseFloat(f.kg_bruto) || 0
-      return bruto > neto
-    })
+    const hayExportableMayorQueNeto = metricasFilas.some((item) => item.kgExportable > neto)
 
     if (mesas.length === 0) {
       notifyFormError('Debe agregar al menos un cuadro antes de guardar.')
@@ -309,8 +305,8 @@ export default function ClasificarLotePage() {
       return
     }
 
-    if (hayBrutoMayorQueNeto) {
-      notifyFormError(`El kg bruto de un trabajador no puede ser mayor al neto del lote (${formatPeso(neto)}).`)
+    if (hayExportableMayorQueNeto) {
+      notifyFormError(`El kg exportable de un trabajador no puede ser mayor al kg neto de ingreso (${formatPeso(neto)}).`)
       return
     }
 
