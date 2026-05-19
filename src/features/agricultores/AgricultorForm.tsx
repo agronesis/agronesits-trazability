@@ -21,7 +21,7 @@ interface AgricultorFormProps {
 export function AgricultorForm({ defaultValues, onSubmit, onCancel, isEditing }: AgricultorFormProps) {
   const normalizedDefaults = useMemo<Partial<AgricultorFormInput>>(() => ({
     estado: 'activo',
-    codigo: defaultValues?.codigo ?? 'AUTO',
+    codigo: defaultValues?.codigo ?? '',
     ...defaultValues,
     dni: defaultValues?.dni ?? '',
     telefono: defaultValues?.telefono ?? '',
@@ -54,28 +54,11 @@ export function AgricultorForm({ defaultValues, onSubmit, onCancel, isEditing }:
     <form onSubmit={handleSubmit(handleValidSubmit as any)} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Código" error={errors.codigo?.message} required>
-          {isEditing ? (
-            <>
-              <Input
-                value={defaultValues?.codigo ?? ''}
-                disabled
-                placeholder="AGRI-000001"
-                className="cursor-not-allowed border-dashed bg-muted text-muted-foreground disabled:opacity-100"
-              />
-              <Input type="hidden" {...register('codigo')} />
-            </>
-          ) : (
-            <>
-              <Input
-                readOnly
-                aria-disabled="true"
-                value=""
-                placeholder="Se asigna automáticamente al guardar"
-                className="cursor-not-allowed border-dashed bg-muted text-muted-foreground placeholder:text-muted-foreground/90"
-              />
-              <Input type="hidden" {...register('codigo')} />
-            </>
-          )}
+          <Input
+            placeholder="AGRI-000001"
+            autoComplete="off"
+            {...register('codigo')}
+          />
         </FormField>
 
         <FormField label="Estado" error={errors.estado?.message} required>

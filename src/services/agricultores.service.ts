@@ -32,11 +32,9 @@ export async function createAgricultor(
   userId: string,
   userEmail = ''
 ): Promise<Agricultor> {
-  const { codigo: _codigo, ...payload } = input
-
   const { data, error } = await supabase
     .from(TABLE)
-    .insert({ ...payload, created_by: userId } as any)
+    .insert({ ...input, created_by: userId } as any)
     .select()
     .single()
 
@@ -62,11 +60,9 @@ export async function updateAgricultor(
   userId = '',
   userEmail = ''
 ): Promise<Agricultor> {
-  const { codigo: _codigo, ...payload } = input
-
   const { data, error } = await supabase
     .from(TABLE)
-    .update({ ...payload, updated_at: new Date().toISOString() })
+    .update({ ...input, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()

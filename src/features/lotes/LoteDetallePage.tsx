@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Printer } from 'lucide-react'
-import { getLote } from '@/services/lotes.service'
+import { Pencil, Printer } from 'lucide-react'
+import { getLote, updateLote } from '@/services/lotes.service'
 import { getClasificacionesPorLote } from '@/services/clasificaciones.service'
 import { getEmpaquetadosPorLote } from '@/services/empaquetados.service'
 import { getDespachosPorLote } from '@/services/despachos.service'
+import { ensureAgricultorSublote } from '@/services/agricultor-sublotes.service'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingPage } from '@/components/shared/Spinner'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { EstadoLoteBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoteTimeline } from './LoteTimeline'
+import { LoteForm } from './LoteForm'
 import { printLoteTicket } from './printLoteTicket'
 import { printEmpaquetadoLabel } from './printDespachoLabel'
 import {
@@ -25,6 +28,7 @@ import {
 import { formatFecha, formatPeso, formatMoneda } from '@/utils/formatters'
 import { calcularPagoSeleccionador, calcularPesoPorJaba, normalizarNumeroPallet } from '@/utils/business-rules'
 import type { Lote, Clasificacion, Despacho, Empaquetado } from '@/types/models'
+import type { LoteFormData } from '@/utils/validators'
 import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
 
@@ -61,6 +65,7 @@ const getMesasStorageKey = (loteId: string) => `clasificacion-cuadros-${loteId}`
 export default function LoteDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
   const roles = useAuthStore((state) => state.roles)
   const [lote, setLote] = useState<Lote | null>(null)
   const [clasificaciones, setClasificaciones] = useState<Clasificacion[]>([])
@@ -69,6 +74,8 @@ export default function LoteDetallePage() {
   const [cuadrosLocales, setCuadrosLocales] = useState<CuadroLocal[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editDialogError, setEditDialogError] = useState<string | null>(null)
 
   const cargar = async () => {
     if (!id) return
@@ -109,6 +116,7 @@ export default function LoteDetallePage() {
   const canPrintLoteLabels = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_LABELS)
   const canProcessLote = hasPermission(roles, APP_PERMISSIONS.LOTES_PROCESS)
   const canDispatchLote = hasPermission(roles, APP_PERMISSIONS.LOTES_DISPATCH)
+  const canEditLoteIngresado = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE) && lote.estado === 'ingresado'
 
   const acopiadorNombre = lote.acopiador
     ? `${lote.acopiador.apellido}, ${lote.acopiador.nombre}`
@@ -116,6 +124,22 @@ export default function LoteDetallePage() {
       ? `${lote.acopiador_agricultor.apellido}, ${lote.acopiador_agricultor.nombre}`
       : '-'
   const pesoPorJaba = calcularPesoPorJaba(lote.peso_neto_kg, lote.num_cubetas)
+
+  const handleEditarLote = async (data: LoteFormData) => {
+    if (!id) return
+
+    try {
+      const actualizado = await updateLote(id, data as any)
+      if (user && data.agricultor_id && data.sublote) {
+        await ensureAgricultorSublote(data.agricultor_id, data.sublote, user.id)
+      }
+      setLote(actualizado)
+      setEditDialogError(null)
+      setEditDialogOpen(false)
+    } catch (e) {
+      setEditDialogError((e as Error).message)
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -125,6 +149,14 @@ export default function LoteDetallePage() {
         backHref={ROUTES.LOTES}
         actions={
           <div className="flex gap-2">
+            {canEditLoteIngresado && (
+              <Button
+                variant="outline"
+                onClick={() => { setEditDialogError(null); setEditDialogOpen(true) }}
+              >
+                <Pencil className="h-4 w-4" /> Editar lote
+              </Button>
+            )}
             {canPrintLoteTicket && (
               <Button
                 variant="outline"
@@ -511,6 +543,37 @@ export default function LoteDetallePage() {
           )}
         </div>
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar lote</DialogTitle></DialogHeader>
+          {editDialogError && <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">{editDialogError}</p>}
+          <LoteForm
+            defaultValues={{
+              codigo: lote.codigo,
+              agricultor_id: lote.agricultor_id,
+              recepcionista_id: lote.recepcionista_id ?? '',
+              acopiador_id: lote.acopiador_id,
+              acopiador_agricultor_id: lote.acopiador_agricultor_id,
+              producto_id: lote.producto_id,
+              centro_acopio_id: lote.centro_acopio_id,
+              fecha_ingreso: lote.fecha_ingreso,
+              fecha_cosecha: lote.fecha_cosecha,
+              peso_bruto_kg: lote.peso_bruto_kg,
+              peso_tara_kg: lote.peso_tara_kg,
+              peso_neto_kg: lote.peso_neto_kg,
+              num_cubetas: lote.num_cubetas,
+              jabas_prestadas: lote.jabas_prestadas,
+              codigo_lote_agricultor: lote.codigo_lote_agricultor,
+              sublote: lote.sublote,
+              observaciones: lote.observaciones,
+            }}
+            onSubmit={handleEditarLote}
+            onCancel={() => { setEditDialogError(null); setEditDialogOpen(false) }}
+            isEditing
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

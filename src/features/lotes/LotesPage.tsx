@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Eye, Filter, Printer, Trash2 } from 'lucide-react'
+import { Plus, Search, Eye, Filter, Pencil, Printer, Trash2 } from 'lucide-react'
 import { useLotes } from './hooks/useLotes'
 import { LoteForm } from './LoteForm'
 import { printLoteTicket } from './printLoteTicket'
@@ -24,7 +24,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
 
 export default function LotesPage() {
-  const { lotes, loading, error, reload, crear, eliminar } = useLotes()
+  const { lotes, loading, error, reload, crear, actualizar, eliminar } = useLotes()
   const navigate = useNavigate()
   const roles = useAuthStore((state) => state.roles)
   const [busqueda, setBusqueda] = useState('')
@@ -36,9 +36,11 @@ export default function LotesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogError, setDialogError] = useState<string | null>(null)
   const [ticketLote, setTicketLote] = useState<Lote | null>(null)
+  const [loteAEditar, setLoteAEditar] = useState<Lote | null>(null)
   const [loteAEliminar, setLoteAEliminar] = useState<Lote | null>(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminacion, setErrorEliminacion] = useState<string | null>(null)
+  const [editDialogError, setEditDialogError] = useState<string | null>(null)
   const canCreateLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
   const canPrintLoteTicket = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_TICKET)
@@ -99,6 +101,18 @@ export default function LotesPage() {
       }
     } finally {
       setEliminando(false)
+    }
+  }
+
+  const handleEditar = async (data: LoteFormData) => {
+    if (!loteAEditar) return
+
+    try {
+      await actualizar(loteAEditar.id, data)
+      setEditDialogError(null)
+      setLoteAEditar(null)
+    } catch (e) {
+      setEditDialogError((e as Error).message)
     }
   }
 
@@ -238,6 +252,19 @@ export default function LotesPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
+                {canCreateLotes && l.estado === 'ingresado' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditDialogError(null)
+                      setLoteAEditar(l)
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/lotes/${l.id}`) }}>
                   <Eye className="h-4 w-4 mr-1" /> Ver
                 </Button>
@@ -287,6 +314,39 @@ export default function LotesPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={Boolean(loteAEditar)} onOpenChange={(open) => { if (!open) { setLoteAEditar(null); setEditDialogError(null) } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar lote</DialogTitle></DialogHeader>
+          {editDialogError && <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">{editDialogError}</p>}
+          {loteAEditar && (
+            <LoteForm
+              defaultValues={{
+                codigo: loteAEditar.codigo,
+                agricultor_id: loteAEditar.agricultor_id,
+                recepcionista_id: loteAEditar.recepcionista_id ?? '',
+                acopiador_id: loteAEditar.acopiador_id,
+                acopiador_agricultor_id: loteAEditar.acopiador_agricultor_id,
+                producto_id: loteAEditar.producto_id,
+                centro_acopio_id: loteAEditar.centro_acopio_id,
+                fecha_ingreso: loteAEditar.fecha_ingreso,
+                fecha_cosecha: loteAEditar.fecha_cosecha,
+                peso_bruto_kg: loteAEditar.peso_bruto_kg,
+                peso_tara_kg: loteAEditar.peso_tara_kg,
+                peso_neto_kg: loteAEditar.peso_neto_kg,
+                num_cubetas: loteAEditar.num_cubetas,
+                jabas_prestadas: loteAEditar.jabas_prestadas,
+                codigo_lote_agricultor: loteAEditar.codigo_lote_agricultor,
+                sublote: loteAEditar.sublote,
+                observaciones: loteAEditar.observaciones,
+              }}
+              onSubmit={handleEditar}
+              onCancel={() => { setLoteAEditar(null); setEditDialogError(null) }}
+              isEditing
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(ticketLote)} onOpenChange={(open) => !open && setTicketLote(null)}>
         <DialogContent className="max-w-md">

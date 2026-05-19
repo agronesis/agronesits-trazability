@@ -355,7 +355,7 @@ export default function ClasificarLotePage() {
     const totalDescarteCalculado = filasValidas.reduce((acc, f) => acc + f.kg_neto_descartable, 0)
     const totalClasificadoCalculado = totalBuenosCalculado + totalDescarteCalculado
     if (totalClasificadoCalculado > neto) {
-      notifyFormError(`La suma de kg exportables y descarte (${formatPeso(totalClasificadoCalculado)}) no puede ser mayor al neto (${formatPeso(neto)}).`)
+      notifyFormError(`La suma de kg exportables + kg neto descarte (${formatPeso(totalClasificadoCalculado)}) no puede ser mayor a los kg netos ingresados (${formatPeso(neto)}).`)
       return
     }
 

@@ -48,11 +48,17 @@ function normalizeText(value: unknown): string {
 
 export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteFormProps) {
   const roles = useAuthStore((state) => state.roles)
-  const { agricultores, crear: crearAgricultor, actualizar: actualizarAgricultor } = useAgricultores()
-  const { acopiadores } = useAcopiadores()
-  const { productos } = useProductos()
-  const { centros } = useCentrosAcopio()
-  const { colaboradores } = useColaboradores()
+  const {
+    agricultores,
+    loading: loadingAgricultores,
+    error: errorAgricultores,
+    crear: crearAgricultor,
+    actualizar: actualizarAgricultor,
+  } = useAgricultores()
+  const { acopiadores, loading: loadingAcopiadores, error: errorAcopiadores } = useAcopiadores()
+  const { productos, loading: loadingProductos, error: errorProductos } = useProductos()
+  const { centros, loading: loadingCentros, error: errorCentros } = useCentrosAcopio()
+  const { colaboradores, loading: loadingColaboradores, error: errorColaboradores } = useColaboradores()
   const [sublotesDisponibles, setSublotesDisponibles] = useState<string[]>([])
   const [subloteModo, setSubloteModo] = useState<'existente' | 'nuevo'>('nuevo')
   const [agricultorDialogOpen, setAgricultorDialogOpen] = useState(false)
@@ -61,6 +67,8 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
   const [agricultorEditandoId, setAgricultorEditandoId] = useState<string | null>(null)
   const [agricultorEditando, setAgricultorEditando] = useState<(Agricultor & { sublotes?: string[] }) | null>(null)
   const canManageAgricultores = hasPermission(roles, APP_PERMISSIONS.AGRICULTORES_MANAGE)
+  const catalogosLoading = loadingAgricultores || loadingAcopiadores || loadingProductos || loadingCentros || loadingColaboradores
+  const catalogosError = errorAgricultores || errorAcopiadores || errorProductos || errorCentros || errorColaboradores
 
   const normalizedDefaults = useMemo<Partial<LoteFormInput>>(() => {
     const fechaIngreso = defaultValues?.fecha_ingreso ?? format(new Date(), 'yyyy-MM-dd')
@@ -276,6 +284,22 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
     await onSubmit(rest as LoteFormData)
   }
 
+  if (catalogosLoading) {
+    return (
+      <div className="flex min-h-40 items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
+
+  if (catalogosError) {
+    return (
+      <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+        {catalogosError}
+      </p>
+    )
+  }
+
   return (
     <form onSubmit={handleSubmit(handleValidSubmit as any)} className="flex flex-col gap-4">
       <Input type="hidden" {...register('codigo')} />
@@ -346,7 +370,7 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
                 error={!!errors.agricultor_id}
               />
             )} />
-            {canManageAgricultores && (
+            {canManageAgricultores && isEditing && (
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={abrirNuevoAgricultor}>
                   <Plus className="h-4 w-4" /> Nuevo agricultor
@@ -508,7 +532,7 @@ export function LoteForm({ defaultValues, onSubmit, onCancel, isEditing }: LoteF
         <Button type="submit" loading={isSubmitting}>{isEditing ? 'Guardar cambios' : 'Registrar lote'}</Button>
       </div>
 
-      {canManageAgricultores && (
+      {canManageAgricultores && isEditing && (
         <Dialog open={agricultorDialogOpen} onOpenChange={(open) => { if (!open) cerrarDialogAgricultor() }}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
