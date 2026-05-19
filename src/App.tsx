@@ -51,7 +51,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute permission={APP_PERMISSIONS.DASHBOARD_VIEW}><DashboardPage /></ProtectedRoute>} />
             <Route path={ROUTES.AGRICULTORES} element={<ProtectedRoute permission={APP_PERMISSIONS.AGRICULTORES_VIEW}><AgricultoresPage /></ProtectedRoute>} />
-            <Route path={ROUTES.ACOPIADORES} element={<ProtectedRoute permission={APP_PERMISSIONS.MAESTROS_MANAGE}><AcopiadoresPage /></ProtectedRoute>} />
+            <Route path={ROUTES.ACOPIADORES} element={<ProtectedRoute permission={APP_PERMISSIONS.ACOPIADORES_MANAGE}><AcopiadoresPage /></ProtectedRoute>} />
             <Route path={ROUTES.COLABORADORES} element={<ProtectedRoute permission={APP_PERMISSIONS.MAESTROS_MANAGE}><ColaboradoresPage /></ProtectedRoute>} />
             <Route path={ROUTES.PRODUCTOS} element={<ProtectedRoute permission={APP_PERMISSIONS.MAESTROS_MANAGE}><ProductosPage /></ProtectedRoute>} />
             <Route path={ROUTES.CENTROS_ACOPIO} element={<ProtectedRoute permission={APP_PERMISSIONS.MAESTROS_MANAGE}><CentrosAcopioPage /></ProtectedRoute>} />
