@@ -287,7 +287,6 @@ export default function ClasificarLotePage() {
     const hayTaraDescarteMayorQueBruto = metricasFilas.some((item) => (item.jabasDescartadas * item.pesoTaraDescarteKg) > item.kgBrutoDescarte)
     const hayBrutoPrincipalMayorQueBrutoLote = metricasFilas.some((item) => item.kgBruto > brutoLote)
     const hayBrutoDescarteMayorQueBrutoLote = metricasFilas.some((item) => item.kgBrutoDescarte > brutoLote)
-    const totalBrutoRegistrado = metricasFilas.reduce((acc, item) => acc + item.kgBruto + item.kgBrutoDescarte, 0)
     const hayExportableMayorQueNeto = metricasFilas.some((item) => item.kgExportable > neto)
 
     if (mesas.length === 0) {
@@ -317,11 +316,6 @@ export default function ClasificarLotePage() {
 
     if (hayBrutoDescarteMayorQueBrutoLote) {
       notifyFormError(`El kg bruto descarte no puede ser mayor al kg bruto del lote (${formatPeso(brutoLote)}).`)
-      return
-    }
-
-    if (totalBrutoRegistrado > brutoLote) {
-      notifyFormError(`La suma de kg bruto principal y kg bruto descarte (${formatPeso(totalBrutoRegistrado)}) no puede superar el kg bruto del lote (${formatPeso(brutoLote)}).`)
       return
     }
 
