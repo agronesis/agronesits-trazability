@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx-js-style'
 import { formatFecha } from '@/utils/formatters'
 
 export interface LotesSeleccionadosExportRow {
-  codigo: string
+  codigoAgricultor: string
   sublote: string
   agricultor: string
   fechaRecepcion: string | null
@@ -24,7 +24,7 @@ export interface LotesSeleccionadosExportRow {
 
 export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRow[]): void {
   const headers = [
-    'Codigo',
+    'Codigo agricultor',
     'Sub lote',
     'Nombre del agricultor',
     'Fecha de recepcion',
@@ -50,7 +50,7 @@ export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRo
     [],
     headers,
     ...rows.map((row) => [
-      row.codigo,
+      row.codigoAgricultor,
       row.sublote,
       row.agricultor,
       formatFecha(row.fechaRecepcion),

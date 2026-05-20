@@ -121,7 +121,7 @@ export default function LotesPage() {
         const porcentajeMerma = Math.max(0, 1 - (porcentajeExportable + porcentajeDescarte))
 
         return {
-          codigo: lote.codigo,
+          codigoAgricultor: lote.codigo_lote_agricultor ?? lote.codigo,
           sublote: lote.sublote ?? '-',
           agricultor: lote.agricultor ? `${lote.agricultor.apellido}, ${lote.agricultor.nombre}` : '-',
           fechaRecepcion: lote.fecha_ingreso,
