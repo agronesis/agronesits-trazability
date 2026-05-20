@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Eye, Filter, Pencil, Printer, Trash2 } from 'lucide-react'
+import { Plus, Search, Eye, Filter, Pencil, Printer, Trash2, Download } from 'lucide-react'
 import { useLotes } from './hooks/useLotes'
 import { LoteForm } from './LoteForm'
 import { printLoteTicket } from './printLoteTicket'
@@ -18,10 +18,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CALIDAD_PRODUCTO_CONFIG, ESTADO_LOTE_CONFIG, TIPO_PRODUCCION_CONFIG, VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
 import { formatFecha, formatPeso } from '@/utils/formatters'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
+import { getClasificacionesPorLote } from '@/services/clasificaciones.service'
+import { generateLotesSeleccionadosExcel, type LotesSeleccionadosExportRow } from '../../utils/lotes-seleccionados-excel'
 import type { LoteFormData } from '@/utils/validators'
 import type { EstadoLote, Lote, VariedadProducto } from '@/types/models'
 import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
+import { APP_ROLES } from '@/types/auth'
 
 export default function LotesPage() {
   const { lotes, loading, error, reload, crear, actualizar, eliminar } = useLotes()
@@ -41,10 +44,17 @@ export default function LotesPage() {
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminacion, setErrorEliminacion] = useState<string | null>(null)
   const [editDialogError, setEditDialogError] = useState<string | null>(null)
+  const [descargandoSeleccionados, setDescargandoSeleccionados] = useState(false)
   const canCreateLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
   const canPrintLoteTicket = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_TICKET)
+  const canExportSelectedLotes =
+    roles.includes(APP_ROLES.ADMIN) ||
+    roles.includes(APP_ROLES.GERENCIA) ||
+    roles.includes(APP_ROLES.ADMINISTRADOR_PLANTA) ||
+    roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO)
   const hasFiltrosActivos = busqueda.trim() !== '' || filtroEstado !== 'todos' || filtroVariedad !== 'todos' || filtroFechaIngreso !== ''
+  const lotesClasificados = lotes.filter((l) => l.estado === 'clasificado')
 
   const getAcopiadorLabel = (lote: Lote) => {
     if (lote.acopiador) return `${lote.acopiador.apellido}, ${lote.acopiador.nombre}`
@@ -71,6 +81,74 @@ export default function LotesPage() {
       setPaginaActual(totalPaginas)
     }
   }, [paginaActual, totalPaginas])
+
+  const handleDescargarLotesSeleccionados = async () => {
+    if (!canExportSelectedLotes) return
+
+    const lotesSeleccionados = lotesClasificados
+    if (lotesSeleccionados.length === 0) {
+      window.alert('No hay lotes con estado clasificado para descargar.')
+      return
+    }
+
+    setDescargandoSeleccionados(true)
+
+    try {
+      const clasificacionesPorLote = await Promise.all(
+        lotesSeleccionados.map(async (lote) => {
+          const sesiones = await getClasificacionesPorLote(lote.id)
+          const clasificacionReciente = sesiones.at(-1)
+          return { loteId: lote.id, clasificacion: clasificacionReciente }
+        })
+      )
+
+      const mapaClasificacion = new Map(clasificacionesPorLote.map((item) => [item.loteId, item.clasificacion]))
+
+      const rows: LotesSeleccionadosExportRow[] = lotesSeleccionados.map((lote) => {
+        const clasificacion = mapaClasificacion.get(lote.id)
+        const aportes = clasificacion?.aportes ?? []
+
+        const jabasSeleccionadas = aportes.reduce((acc, item) => acc + Number(item.num_jabas ?? 0), 0)
+        const pesoBrutoSeleccion = aportes.reduce((acc, item) => acc + Number(item.kg_bruto ?? 0), 0)
+        const pesoExportableSeleccion = Number(clasificacion?.peso_bueno_kg ?? 0)
+        const jabasDescarte = aportes.reduce((acc, item) => acc + Number(item.jabas_descartadas ?? 0), 0)
+        const pesoBrutoDescarte = aportes.reduce((acc, item) => acc + Number(item.kg_bruto_descartable ?? 0), 0)
+        const pesoNetoDescarte = aportes.reduce((acc, item) => acc + Number(item.kg_neto_descartable ?? 0), 0)
+
+        const pesoNetoRecepcion = Number(lote.peso_neto_kg ?? 0)
+        const porcentajeExportable = pesoNetoRecepcion > 0 ? pesoExportableSeleccion / pesoNetoRecepcion : 0
+        const porcentajeDescarte = pesoNetoRecepcion > 0 ? pesoNetoDescarte / pesoNetoRecepcion : 0
+        const porcentajeMerma = Math.max(0, 1 - (porcentajeExportable + porcentajeDescarte))
+
+        return {
+          codigo: lote.codigo,
+          sublote: lote.sublote ?? '-',
+          agricultor: lote.agricultor ? `${lote.agricultor.apellido}, ${lote.agricultor.nombre}` : '-',
+          fechaRecepcion: lote.fecha_ingreso,
+          variedad: lote.producto ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label : '-',
+          jabasIngresadas: Number(lote.num_cubetas ?? 0),
+          pesoBrutoRecepcion: Number(lote.peso_bruto_kg ?? 0),
+          pesoNetoRecepcion,
+          fechaSeleccion: clasificacion?.fecha_clasificacion ?? null,
+          jabasSeleccionadas,
+          pesoBrutoSeleccion,
+          pesoExportableSeleccion,
+          jabasDescarte,
+          pesoBrutoDescarte,
+          pesoNetoDescarte,
+          porcentajeExportable,
+          porcentajeDescarte,
+          porcentajeMerma,
+        }
+      })
+
+      generateLotesSeleccionadosExcel(rows)
+    } catch (e) {
+      window.alert((e as Error).message)
+    } finally {
+      setDescargandoSeleccionados(false)
+    }
+  }
 
   const handleSubmit = async (data: LoteFormData) => {
     try {
@@ -124,7 +202,24 @@ export default function LotesPage() {
       <PageHeader
         title="Lotes"
         description={`${lotes.length} registrados`}
-        actions={canCreateLotes ? <Button onClick={() => { setDialogError(null); setDialogOpen(true) }}><Plus className="h-4 w-4" /> Nuevo lote</Button> : undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            {canExportSelectedLotes && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDescargarLotesSeleccionados}
+                loading={descargandoSeleccionados}
+                disabled={lotesClasificados.length === 0 || descargandoSeleccionados}
+              >
+                <Download className="h-4 w-4 mr-2" /> Descargar clasificados ({lotesClasificados.length})
+              </Button>
+            )}
+            {canCreateLotes && (
+              <Button onClick={() => { setDialogError(null); setDialogOpen(true) }}><Plus className="h-4 w-4" /> Nuevo lote</Button>
+            )}
+          </div>
+        }
       />
 
       {/* Filtros */}
