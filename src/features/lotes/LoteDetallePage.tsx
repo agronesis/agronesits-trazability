@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Pencil, Printer } from 'lucide-react'
-import { getLote, updateLote } from '@/services/lotes.service'
+import { Pencil, Printer, Trash2 } from 'lucide-react'
+import { deleteLote, getLote, updateLote } from '@/services/lotes.service'
 import { getClasificacionesPorLote } from '@/services/clasificaciones.service'
 import { getEmpaquetadosPorLote } from '@/services/empaquetados.service'
 import { getDespachosPorLote } from '@/services/despachos.service'
 import { ensureAgricultorSublote } from '@/services/agricultor-sublotes.service'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { LoadingPage } from '@/components/shared/Spinner'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { EstadoLoteBadge } from '@/components/shared/StatusBadge'
@@ -76,6 +77,9 @@ export default function LoteDetallePage() {
   const [error, setError] = useState<string | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editDialogError, setEditDialogError] = useState<string | null>(null)
+  const [eliminarDialogOpen, setEliminarDialogOpen] = useState(false)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminacion, setErrorEliminacion] = useState<string | null>(null)
 
   const cargar = async () => {
     if (!id) return
@@ -116,6 +120,7 @@ export default function LoteDetallePage() {
   const canPrintLoteLabels = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_LABELS)
   const canProcessLote = hasPermission(roles, APP_PERMISSIONS.LOTES_PROCESS)
   const canDispatchLote = hasPermission(roles, APP_PERMISSIONS.LOTES_DISPATCH)
+  const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
   const canEditLoteIngresado = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE) && lote.estado === 'ingresado'
 
   const acopiadorNombre = lote.acopiador
@@ -141,6 +146,27 @@ export default function LoteDetallePage() {
     }
   }
 
+  const handleEliminarLote = async () => {
+    if (!id || !canDeleteLotes) return
+    setEliminando(true)
+    try {
+      await deleteLote(id)
+      setEliminarDialogOpen(false)
+      navigate(ROUTES.LOTES)
+    } catch (e) {
+      const msg = (e as Error).message
+      setEliminarDialogOpen(false)
+      if (msg.startsWith('DESPACHO_ASOCIADO::')) {
+        const codigos = msg.replace('DESPACHO_ASOCIADO::', '')
+        setErrorEliminacion(`No se puede eliminar este lote porque tiene despacho(s) asociado(s): ${codigos}. Elimine primero el/los despacho(s) para poder eliminar el lote.`)
+      } else {
+        setErrorEliminacion(msg)
+      }
+    } finally {
+      setEliminando(false)
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto">
       <PageHeader
@@ -163,6 +189,14 @@ export default function LoteDetallePage() {
                 onClick={() => printLoteTicket(lote)}
               >
                 <Printer className="h-4 w-4" /> Imprimir ticket
+              </Button>
+            )}
+            {canDeleteLotes && (
+              <Button
+                variant="outline"
+                onClick={() => setEliminarDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" /> Eliminar lote
               </Button>
             )}
             {canProcessLote && lote.estado === 'ingresado' && (
@@ -572,6 +606,31 @@ export default function LoteDetallePage() {
             onCancel={() => { setEditDialogError(null); setEditDialogOpen(false) }}
             isEditing
           />
+        </DialogContent>
+      </Dialog>
+
+      {canDeleteLotes && (
+        <ConfirmDialog
+          open={eliminarDialogOpen}
+          title="Eliminar lote"
+          description={`¿Está seguro que desea eliminar el lote ${lote.codigo}? Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          variant="destructive"
+          loading={eliminando}
+          onConfirm={handleEliminarLote}
+          onCancel={() => setEliminarDialogOpen(false)}
+        />
+      )}
+
+      <Dialog open={Boolean(errorEliminacion)} onOpenChange={(open) => { if (!open) setErrorEliminacion(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>No se puede eliminar</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{errorEliminacion}</p>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setErrorEliminacion(null)}>Cerrar</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

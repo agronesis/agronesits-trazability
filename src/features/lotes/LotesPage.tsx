@@ -329,7 +329,11 @@ export default function LotesPage() {
             >
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold mt-0.5">
-                  {l.codigo_lote_agricultor ?? 'SIN CODIGO DE AGRICULTOR'}{l.sublote ? ` - ${l.sublote}` : ''}
+                  {l.codigo_lote_agricultor ?? 'SIN CODIGO DE AGRICULTOR'}
+                  {l.sublote ? ` - ${l.sublote}` : ''}
+                  {' - '}Bruto: {formatPeso(l.peso_bruto_kg)}
+                  {' - '}Jabas: {l.num_cubetas}
+                  {' - '}Neto: {formatPeso(l.peso_neto_kg)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {l.agricultor?.apellido}, {l.agricultor?.nombre} - {l.producto ? VARIEDAD_PRODUCTO_CONFIG[l.producto.variedad].label : '-'} - {formatFecha(l.fecha_ingreso)}
