@@ -270,24 +270,7 @@ export default function ClasificarLotePage() {
 
     const filasActuales = mesas.flatMap((m) => m.filas)
 
-    const hayFilaIncompleta = filasActuales.some((f) => {
-      const bruto = parseFloat(f.kg_bruto)
-      const numJabas = parseFloat(f.num_jabas)
-      const pesoTara = parseFloat(f.peso_tara_kg || String(lote.peso_tara_kg))
-      return !f.colaborador_id
-        || f.kg_bruto.trim() === '' || Number.isNaN(bruto) || bruto < 0
-        || f.num_jabas.trim() === '' || Number.isNaN(numJabas) || numJabas < 0
-        || (f.peso_tara_kg.trim() === '' && lote.peso_tara_kg <= 0) || Number.isNaN(pesoTara) || pesoTara < 0
-    })
-
-    const neto = lote.peso_neto_kg
-    const brutoLote = lote.peso_bruto_kg
-
-    const hayTaraPrincipalMayorQueBruto = metricasFilas.some((item) => (item.numJabas * item.pesoTaraKg) > item.kgBruto)
-    const hayTaraDescarteMayorQueBruto = metricasFilas.some((item) => (item.jabasDescartadas * item.pesoTaraDescarteKg) > item.kgBrutoDescarte)
-    const hayBrutoPrincipalMayorQueBrutoLote = metricasFilas.some((item) => item.kgBruto > brutoLote)
-    const hayBrutoDescarteMayorQueBrutoLote = metricasFilas.some((item) => item.kgBrutoDescarte > brutoLote)
-    const hayExportableMayorQueNeto = metricasFilas.some((item) => item.kgExportable > neto)
+    const hayFilaIncompleta = filasActuales.some((f) => !f.colaborador_id)
 
     if (mesas.length === 0) {
       notifyFormError('Debe agregar al menos un cuadro antes de guardar.')
@@ -300,32 +283,7 @@ export default function ClasificarLotePage() {
     }
 
     if (hayFilaIncompleta) {
-      notifyFormError('Complete todos los trabajadores: seleccionador, kg brutos, cantidad de jabas y peso tara.')
-      return
-    }
-
-    if (hayExportableMayorQueNeto) {
-      notifyFormError(`El kg exportable de un trabajador no puede ser mayor al kg neto de ingreso (${formatPeso(neto)}).`)
-      return
-    }
-
-    if (hayBrutoPrincipalMayorQueBrutoLote) {
-      notifyFormError(`El kg bruto principal no puede ser mayor al kg bruto del lote (${formatPeso(brutoLote)}).`)
-      return
-    }
-
-    if (hayBrutoDescarteMayorQueBrutoLote) {
-      notifyFormError(`El kg bruto descarte no puede ser mayor al kg bruto del lote (${formatPeso(brutoLote)}).`)
-      return
-    }
-
-    if (hayTaraPrincipalMayorQueBruto) {
-      notifyFormError('La tara total de la fila principal no puede ser mayor que los kg brutos del trabajador.')
-      return
-    }
-
-    if (hayTaraDescarteMayorQueBruto) {
-      notifyFormError('La tara total del descarte no puede ser mayor que el kg bruto descarte del trabajador.')
+      notifyFormError('Complete todos los trabajadores: falta seleccionar al menos un colaborador en una o más filas.')
       return
     }
 
@@ -340,14 +298,6 @@ export default function ClasificarLotePage() {
       peso_tara_descartable_kg: item.pesoTaraDescarteKg,
       kg_neto_descartable: item.kgNetoDescartable,
     }))
-
-    const totalBuenosCalculado = filasValidas.reduce((acc, f) => acc + f.kg_bueno, 0)
-    const totalDescarteCalculado = filasValidas.reduce((acc, f) => acc + f.kg_neto_descartable, 0)
-    const totalClasificadoCalculado = totalBuenosCalculado + totalDescarteCalculado
-    if (totalClasificadoCalculado > neto) {
-      notifyFormError(`La suma de kg exportables + kg neto descarte (${formatPeso(totalClasificadoCalculado)}) no puede ser mayor a los kg netos ingresados (${formatPeso(neto)}).`)
-      return
-    }
 
     setSaving(true)
     try {
@@ -538,7 +488,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Kg brutos</p>
                       <Input
                         type="number"
-                        min="0"
                         step="0.01"
                         placeholder="0.00"
                         value={fila.kg_bruto}
@@ -549,7 +498,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Cantidad de jabas</p>
                       <Input
                         type="number"
-                        min="0"
                         step="1"
                         placeholder="0"
                         value={fila.num_jabas}
@@ -560,7 +508,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Peso tara</p>
                       <Input
                         type="number"
-                        min="0"
                         step="0.01"
                         placeholder={String(lote.peso_tara_kg.toFixed(2))}
                         value={fila.peso_tara_kg}
@@ -571,7 +518,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Kg exportables</p>
                       <Input
                         type="number"
-                        min="0"
                         step="0.01"
                         value={kgExportableFila.toFixed(2)}
                         disabled
@@ -585,7 +531,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Kg bruto descarte</p>
                       <Input
                         type="number"
-                        min="0"
                         step="0.01"
                         placeholder="0.00"
                         value={fila.kg_bruto_descartable}
@@ -596,7 +541,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Cantidad de jabas descarte</p>
                       <Input
                         type="number"
-                        min="0"
                         step="1"
                         placeholder="0"
                         value={fila.jabas_descartadas}
@@ -607,7 +551,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Peso tara</p>
                       <Input
                         type="number"
-                        min="0"
                         step="0.01"
                         placeholder={String(lote.peso_tara_kg.toFixed(2))}
                         value={fila.peso_tara_descartable_kg}
@@ -618,7 +561,6 @@ export default function ClasificarLotePage() {
                       <p className="text-[10px] text-muted-foreground mb-0.5">Kg neto descarte</p>
                       <Input
                         type="number"
-                        min="0"
                         step="0.01"
                         value={kgNetoDescarteFila.toFixed(2)}
                         disabled

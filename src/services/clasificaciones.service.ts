@@ -44,23 +44,6 @@ export async function guardarClasificacion(
   userId: string
 ): Promise<Clasificacion> {
   const totalBuenos = aportes.reduce((acc, a) => acc + a.kg_bueno, 0)
-  const totalNetoDescarte = aportes.reduce((acc, a) => acc + a.kg_neto_descartable, 0)
-  const totalClasificado = totalBuenos + totalNetoDescarte
-
-  const { data: loteData, error: loteError } = await supabase
-    .from('lotes')
-    .select('peso_neto_kg, codigo')
-    .eq('id', loteId)
-    .single()
-
-  if (loteError) throw new Error(loteError.message)
-
-  const pesoNetoLote = Number(loteData?.peso_neto_kg ?? 0)
-  if (totalClasificado - pesoNetoLote > 0.01) {
-    const totalFormateado = totalClasificado.toFixed(2)
-    const netoFormateado = pesoNetoLote.toFixed(2)
-    throw new Error(`La suma de kg exportables + kg neto descarte (${totalFormateado} kg) no puede ser mayor a los kg netos ingresados (${netoFormateado} kg).`)
-  }
 
   const payloadBase: Record<string, unknown> = {
     lote_id: loteId,
