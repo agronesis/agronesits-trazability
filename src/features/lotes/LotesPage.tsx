@@ -20,6 +20,7 @@ import { formatFecha, formatPeso } from '@/utils/formatters'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
 import { getClasificacionesPorLote } from '@/services/clasificaciones.service'
 import { generateLotesSeleccionadosExcel, type LotesSeleccionadosExportRow } from '../../utils/lotes-seleccionados-excel'
+import { generateLotesIngresadosExcel, type LotesIngresadosExportRow } from '../../utils/lotes-ingresados-excel'
 import type { LoteFormData } from '@/utils/validators'
 import type { EstadoLote, Lote, VariedadProducto } from '@/types/models'
 import { useAuthStore } from '@/store/auth.store'
@@ -47,6 +48,7 @@ export default function LotesPage() {
   const [errorEliminacion, setErrorEliminacion] = useState<string | null>(null)
   const [editDialogError, setEditDialogError] = useState<string | null>(null)
   const [descargandoSeleccionados, setDescargandoSeleccionados] = useState(false)
+  const [descargandoIngresados, setDescargandoIngresados] = useState(false)
   const [mermaPorLote, setMermaPorLote] = useState<Record<string, number>>({})
   const canCreateLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
@@ -58,6 +60,9 @@ export default function LotesPage() {
     roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO)
   const hasFiltrosActivos = busqueda.trim() !== '' || filtroEstado !== 'todos' || filtroVariedad !== 'todos' || filtroFechaIngreso !== ''
   const lotesClasificados = lotes.filter((l) => l.estado === 'clasificado')
+  // Todo lote del sistema fue ingresado/recepcionado en origen,
+  // por lo que este export incluye todos los estados actuales.
+  const lotesIngresados = lotes
 
   const getAcopiadorLabel = (lote: Lote) => {
     if (lote.acopiador) return `${lote.acopiador.apellido}, ${lote.acopiador.nombre}`
@@ -202,6 +207,35 @@ export default function LotesPage() {
     }
   }
 
+  const handleDescargarLotesIngresados = async () => {
+    if (!canExportSelectedLotes) return
+
+    if (lotesIngresados.length === 0) {
+      window.alert('No hay lotes registrados para descargar.')
+      return
+    }
+
+    setDescargandoIngresados(true)
+    try {
+      const rows: LotesIngresadosExportRow[] = lotesIngresados.map((lote) => ({
+        codigo: lote.codigo_lote_agricultor ?? lote.codigo,
+        agricultor: lote.agricultor ? `${lote.agricultor.apellido}, ${lote.agricultor.nombre}` : '-',
+        fechaCosecha: lote.fecha_cosecha,
+        fechaRecepcion: lote.fecha_ingreso,
+        variedad: lote.producto ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label : '-',
+        jabasIngresadas: Number(lote.num_cubetas ?? 0),
+        kgBrutos: Number(lote.peso_bruto_kg ?? 0),
+        kgNetos: Number(lote.peso_neto_kg ?? 0),
+      }))
+
+      generateLotesIngresadosExcel(rows)
+    } catch (e) {
+      window.alert((e as Error).message)
+    } finally {
+      setDescargandoIngresados(false)
+    }
+  }
+
   const handleSubmit = async (data: LoteFormData) => {
     try {
       const nuevo = await crear(data)
@@ -256,6 +290,17 @@ export default function LotesPage() {
         description={`${lotes.length} registrados`}
         actions={
           <div className="flex items-center gap-2">
+            {canExportSelectedLotes && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDescargarLotesIngresados}
+                loading={descargandoIngresados}
+                disabled={lotesIngresados.length === 0 || descargandoIngresados}
+              >
+                <Download className="h-4 w-4 mr-2" /> Descargar ingresados ({lotesIngresados.length})
+              </Button>
+            )}
             {canExportSelectedLotes && (
               <Button
                 type="button"
