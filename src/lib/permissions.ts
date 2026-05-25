@@ -1,5 +1,6 @@
 import { ROUTES } from '@/constants'
 import { APP_ROLES, type AppRole } from '@/types/auth'
+import type { EstadoLote } from '@/types/models'
 
 export const APP_PERMISSIONS = {
   DASHBOARD_VIEW: 'dashboard.view',
@@ -165,4 +166,44 @@ export function getDefaultRouteForRoles(roles: AppRole[]): string {
   ]
 
   return candidates.find((route) => canAccessRoute(roles, route)) ?? ROUTES.LOGIN
+}
+
+export function canEditLote(roles: AppRole[], estado: EstadoLote): boolean {
+  if (!hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)) {
+    return false
+  }
+
+  if (estado === 'ingresado') {
+    return true
+  }
+
+  if (estado === 'clasificado') {
+    return (
+      roles.includes(APP_ROLES.ADMIN) ||
+      roles.includes(APP_ROLES.GERENCIA) ||
+      roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO)
+    )
+  }
+
+  return false
+}
+
+export function canEditClasificacion(roles: AppRole[], estado: EstadoLote): boolean {
+  if (!hasPermission(roles, APP_PERMISSIONS.LOTES_PROCESS)) {
+    return false
+  }
+
+  if (estado === 'ingresado') {
+    return true
+  }
+
+  if (estado === 'clasificado') {
+    return (
+      roles.includes(APP_ROLES.ADMIN) ||
+      roles.includes(APP_ROLES.GERENCIA) ||
+      roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO)
+    )
+  }
+
+  return false
 }

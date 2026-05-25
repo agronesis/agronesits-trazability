@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/store/auth.store'
+import { canEditClasificacion } from '@/lib/permissions'
 import { formatPeso } from '@/utils/formatters'
 import { calcularPagoSeleccionador } from '@/utils/business-rules'
 import { Plus, Trash2 } from 'lucide-react'
@@ -50,7 +51,8 @@ const getMesasStorageKey = (loteId: string) => `clasificacion-cuadros-${loteId}`
 export default function ClasificarLotePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const user = useAuthStore((state) => state.user)
+  const roles = useAuthStore((state) => state.roles)
   const uid = useId()
 
   const crearFila = (suffix: string): Fila => ({
@@ -110,6 +112,7 @@ export default function ClasificarLotePage() {
   const totalMerma = Math.max(0, (lote?.peso_neto_kg ?? 0) - (totalExportables + totalNetoDescartable))
   const totalPagoSeleccionadores = metricasFilas.reduce((acc, item) =>
     acc + calcularPagoSeleccionador(item.kgExportable, calidad), 0)
+  const canEditarClasificacion = lote ? canEditClasificacion(roles, lote.estado) : false
 
   const cargar = async () => {
     if (!id) return
@@ -260,6 +263,10 @@ export default function ClasificarLotePage() {
 
   const handleGuardar = async (finalizarDespues = false) => {
     if (!lote || !user) return
+    if (!canEditarClasificacion) {
+      toast('error', 'No tiene permisos para editar la clasificación de este lote.')
+      return
+    }
 
     setFormError(null)
 
@@ -361,6 +368,14 @@ export default function ClasificarLotePage() {
   if (loading) return <LoadingPage />
   if (error) return <ErrorMessage message={error} onRetry={cargar} />
   if (!lote) return null
+  if (!canEditarClasificacion) {
+    return (
+      <ErrorMessage
+        message="No tiene permisos para editar la clasificación de este lote en su estado actual."
+        onRetry={() => navigate(`/lotes/${id}`)}
+      />
+    )
+  }
 
   const colaboradoresSeleccionados = new Set(mesas.flatMap((m) => m.filas.map((f) => f.colaborador_id)).filter(Boolean))
 

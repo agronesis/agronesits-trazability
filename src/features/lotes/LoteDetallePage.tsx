@@ -31,7 +31,7 @@ import { calcularPagoSeleccionador, calcularPesoPorJaba, normalizarNumeroPallet 
 import type { Lote, Clasificacion, Despacho, Empaquetado } from '@/types/models'
 import type { LoteFormData } from '@/utils/validators'
 import { useAuthStore } from '@/store/auth.store'
-import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
+import { APP_PERMISSIONS, canEditClasificacion, canEditLote, hasPermission } from '@/lib/permissions'
 
 const toNumber = (value: string | number | null | undefined) => {
   const parsed = Number(value)
@@ -121,7 +121,8 @@ export default function LoteDetallePage() {
   const canProcessLote = hasPermission(roles, APP_PERMISSIONS.LOTES_PROCESS)
   const canDispatchLote = hasPermission(roles, APP_PERMISSIONS.LOTES_DISPATCH)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
-  const canEditLoteIngresado = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE) && lote.estado === 'ingresado'
+  const canEditLoteIngresado = canEditLote(roles, lote.estado)
+  const canEditarClasificacion = canEditClasificacion(roles, lote.estado)
 
   const acopiadorNombre = lote.acopiador
     ? `${lote.acopiador.apellido}, ${lote.acopiador.nombre}`
@@ -199,12 +200,12 @@ export default function LoteDetallePage() {
                 <Trash2 className="h-4 w-4" /> Eliminar lote
               </Button>
             )}
-            {canProcessLote && lote.estado === 'ingresado' && (
+            {canProcessLote && canEditarClasificacion && (
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
                 onClick={() => navigate(`/lotes/${id}/clasificar`)}
               >
-                Clasificar
+                {lote.estado === 'clasificado' ? 'Editar clasificación' : 'Clasificar'}
               </Button>
             )}
             {canDispatchLote && lote.estado === 'empaquetado' && (

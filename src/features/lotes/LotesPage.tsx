@@ -23,7 +23,7 @@ import { generateLotesSeleccionadosExcel, type LotesSeleccionadosExportRow } fro
 import type { LoteFormData } from '@/utils/validators'
 import type { EstadoLote, Lote, VariedadProducto } from '@/types/models'
 import { useAuthStore } from '@/store/auth.store'
-import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
+import { APP_PERMISSIONS, canEditLote, hasPermission } from '@/lib/permissions'
 import { APP_ROLES } from '@/types/auth'
 
 export default function LotesPage() {
@@ -351,7 +351,7 @@ export default function LotesPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
-                {canCreateLotes && l.estado === 'ingresado' && (
+                {canEditLote(roles, l.estado) && (
                   <Button
                     variant="outline"
                     size="sm"
