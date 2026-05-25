@@ -109,7 +109,7 @@ export default function ClasificarLotePage() {
   })
   const totalExportables = metricasFilas.reduce((acc, item) => acc + item.kgExportable, 0)
   const totalNetoDescartable = metricasFilas.reduce((acc, item) => acc + item.kgNetoDescartable, 0)
-  const totalMerma = Math.max(0, (lote?.peso_neto_kg ?? 0) - (totalExportables + totalNetoDescartable))
+  const totalMerma = roundTo2((lote?.peso_neto_kg ?? 0) - (totalExportables + totalNetoDescartable))
   const totalPagoSeleccionadores = metricasFilas.reduce((acc, item) =>
     acc + calcularPagoSeleccionador(item.kgExportable, calidad), 0)
   const canEditarClasificacion = lote ? canEditClasificacion(roles, lote.estado) : false

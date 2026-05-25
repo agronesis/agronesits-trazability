@@ -130,6 +130,15 @@ export default function LoteDetallePage() {
       ? `${lote.acopiador_agricultor.apellido}, ${lote.acopiador_agricultor.nombre}`
       : '-'
   const pesoPorJaba = calcularPesoPorJaba(lote.peso_neto_kg, lote.num_cubetas)
+  const sesionClasificacion = clasificaciones[0]
+  const mermaDetalle = sesionClasificacion
+    ? roundTo2(
+      lote.peso_neto_kg - (
+        Number(sesionClasificacion.peso_bueno_kg ?? 0) +
+        (sesionClasificacion.aportes ?? []).reduce((acc, aporte) => acc + Number(aporte.kg_neto_descartable ?? 0), 0)
+      )
+    )
+    : null
 
   const handleEditarLote = async (data: LoteFormData) => {
     if (!id) return
@@ -240,7 +249,14 @@ export default function LoteDetallePage() {
                 <section className="rounded-lg border bg-muted/20 p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Personas</p>
-                    <EstadoLoteBadge estado={lote.estado} />
+                    <div className="flex items-center gap-2">
+                      {mermaDetalle !== null && (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${mermaDetalle < 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                          Merma: {formatPeso(mermaDetalle)}
+                        </span>
+                      )}
+                      <EstadoLoteBadge estado={lote.estado} />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Agricultor</p>
@@ -397,7 +413,7 @@ export default function LoteDetallePage() {
             const totalJabasDesc = aportes.reduce((s, a) => s + (a.jabas_descartadas ?? 0), 0)
             const totalBrutoDesc = aportes.reduce((s, a) => s + (a.kg_bruto_descartable ?? 0), 0)
             const totalNetoDesc = aportes.reduce((s, a) => s + (a.kg_neto_descartable ?? 0), 0)
-            const totalMerma = Math.max(0, lote.peso_neto_kg - (sesion.peso_bueno_kg + totalNetoDesc))
+            const totalMerma = roundTo2(lote.peso_neto_kg - (sesion.peso_bueno_kg + totalNetoDesc))
             const aportesAgrupadosPorMesa = (cuadrosLocales ?? [])
               .map((cuadro, index) => ({
                 index,

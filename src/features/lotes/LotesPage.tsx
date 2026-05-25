@@ -26,6 +26,8 @@ import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, canEditLote, hasPermission } from '@/lib/permissions'
 import { APP_ROLES } from '@/types/auth'
 
+const roundTo2 = (value: number) => Math.round(value * 100) / 100
+
 export default function LotesPage() {
   const { lotes, loading, error, reload, crear, actualizar, eliminar } = useLotes()
   const navigate = useNavigate()
@@ -45,6 +47,7 @@ export default function LotesPage() {
   const [errorEliminacion, setErrorEliminacion] = useState<string | null>(null)
   const [editDialogError, setEditDialogError] = useState<string | null>(null)
   const [descargandoSeleccionados, setDescargandoSeleccionados] = useState(false)
+  const [mermaPorLote, setMermaPorLote] = useState<Record<string, number>>({})
   const canCreateLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
   const canPrintLoteTicket = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_TICKET)
@@ -82,6 +85,55 @@ export default function LotesPage() {
     }
   }, [paginaActual, totalPaginas])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const cargarMermas = async () => {
+      const lotesConClasificacion = lotes.filter((l) => l.estado !== 'ingresado')
+      if (lotesConClasificacion.length === 0) {
+        if (!cancelled) setMermaPorLote({})
+        return
+      }
+
+      try {
+        const resumenes = await Promise.all(
+          lotesConClasificacion.map(async (lote) => {
+            const sesiones = await getClasificacionesPorLote(lote.id)
+            const sesion = sesiones.at(-1)
+            if (!sesion) return { loteId: lote.id, merma: 0 }
+
+            const totalNetoDescartable = (sesion.aportes ?? []).reduce(
+              (acc, aporte) => acc + Number(aporte.kg_neto_descartable ?? 0),
+              0
+            )
+            const totalProcesado = Number(sesion.peso_bueno_kg ?? 0) + totalNetoDescartable
+            const merma = roundTo2(Number(lote.peso_neto_kg ?? 0) - totalProcesado)
+            return { loteId: lote.id, merma }
+          })
+        )
+
+        if (cancelled) return
+
+        setMermaPorLote(
+          resumenes.reduce<Record<string, number>>((acc, item) => {
+            acc[item.loteId] = item.merma
+            return acc
+          }, {})
+        )
+      } catch {
+        if (!cancelled) {
+          setMermaPorLote({})
+        }
+      }
+    }
+
+    void cargarMermas()
+
+    return () => {
+      cancelled = true
+    }
+  }, [lotes])
+
   const handleDescargarLotesSeleccionados = async () => {
     if (!canExportSelectedLotes) return
 
@@ -118,7 +170,7 @@ export default function LotesPage() {
         const pesoNetoRecepcion = Number(lote.peso_neto_kg ?? 0)
         const porcentajeExportable = pesoNetoRecepcion > 0 ? pesoExportableSeleccion / pesoNetoRecepcion : 0
         const porcentajeDescarte = pesoNetoRecepcion > 0 ? pesoNetoDescarte / pesoNetoRecepcion : 0
-        const porcentajeMerma = Math.max(0, 1 - (porcentajeExportable + porcentajeDescarte))
+        const porcentajeMerma = 1 - (porcentajeExportable + porcentajeDescarte)
 
         return {
           codigoAgricultor: lote.codigo_lote_agricultor ?? lote.codigo,
@@ -340,6 +392,23 @@ export default function LotesPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {(() => {
+                  const merma = mermaPorLote[l.id]
+                  const hasMerma = l.estado !== 'ingresado' && merma !== undefined
+                  const mermaValor = Number(merma ?? 0)
+                  const mermaTexto = hasMerma ? formatPeso(mermaValor) : '-'
+                  const mermaClassName = !hasMerma
+                    ? 'bg-muted text-muted-foreground'
+                    : mermaValor < 0
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'
+
+                  return (
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${mermaClassName}`}>
+                      Merma: {mermaTexto}
+                    </span>
+                  )
+                })()}
                 <EstadoLoteBadge estado={l.estado} />
                 {canPrintLoteTicket && (
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); printLoteTicket(l) }}>

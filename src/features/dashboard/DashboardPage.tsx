@@ -177,7 +177,7 @@ function buildMetricRow(lote: Lote, clasificaciones: DashboardClasificacionRow[]
     0
   ))
   const ingresado = roundTo2(toNumber(lote.peso_neto_kg))
-  const merma = roundTo2(Math.max(0, ingresado - (exportable + descarte)))
+  const merma = roundTo2(ingresado - (exportable + descarte))
 
   return {
     id: lote.id,
