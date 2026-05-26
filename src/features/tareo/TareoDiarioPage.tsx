@@ -20,6 +20,14 @@ export default function TareoDiarioPage() {
     () => rows.reduce((acc, row) => acc + row.kilos, 0),
     [rows]
   )
+  const totalSugar = useMemo(
+    () => rows.reduce((acc, row) => acc + (row.kilos_sugar ?? 0), 0),
+    [rows]
+  )
+  const totalSnow = useMemo(
+    () => rows.reduce((acc, row) => acc + (row.kilos_snow ?? 0), 0),
+    [rows]
+  )
 
   const cargar = async () => {
     setLoading(true)
@@ -79,13 +87,15 @@ export default function TareoDiarioPage() {
                 <TableHead>DNI</TableHead>
                 <TableHead>Colaborador</TableHead>
                 <TableHead>Rol</TableHead>
-                <TableHead className="text-right">Kilos</TableHead>
+                <TableHead className="text-right">Kg Sugar Snap</TableHead>
+                <TableHead className="text-right">Kg Snow Peas</TableHead>
+                <TableHead className="text-right">Total Kilos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     {loading ? 'Consultando...' : 'Sin datos para la fecha seleccionada.'}
                   </TableCell>
                 </TableRow>
@@ -95,6 +105,8 @@ export default function TareoDiarioPage() {
                     <TableCell>{row.dni ?? '-'}</TableCell>
                     <TableCell className="font-medium">{row.apellido}, {row.nombre}</TableCell>
                     <TableCell>{normalizarRol(row.rol)}</TableCell>
+                    <TableCell className="text-right">{(row.kilos_sugar ?? 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{(row.kilos_snow ?? 0).toFixed(2)}</TableCell>
                     <TableCell className="text-right">{row.kilos.toFixed(2)}</TableCell>
                   </TableRow>
                 ))
@@ -102,8 +114,10 @@ export default function TareoDiarioPage() {
             </TableBody>
           </Table>
 
-          <div className="px-4 py-3 border-t text-right text-sm font-medium">
-            Total kilos: {totalKilos.toFixed(2)}
+          <div className="px-4 py-3 border-t text-right text-sm font-medium space-y-0.5">
+            <div>Total Sugar Snap: {totalSugar.toFixed(2)} kg</div>
+            <div>Total Snow Peas: {totalSnow.toFixed(2)} kg</div>
+            <div>Total kilos: {totalKilos.toFixed(2)}</div>
           </div>
         </CardContent>
       </Card>
