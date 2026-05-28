@@ -57,7 +57,8 @@ export default function LotesPage() {
     roles.includes(APP_ROLES.ADMIN) ||
     roles.includes(APP_ROLES.GERENCIA) ||
     roles.includes(APP_ROLES.ADMINISTRADOR_PLANTA) ||
-    roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO)
+    roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO) ||
+    roles.includes(APP_ROLES.PADRON_AGRICULTORES)
   const hasFiltrosActivos = busqueda.trim() !== '' || filtroEstado !== 'todos' || filtroVariedad !== 'todos' || filtroFechaIngreso !== ''
   const lotesClasificados = lotes.filter((l) => l.estado === 'clasificado')
   // Todo lote del sistema fue ingresado/recepcionado en origen,
