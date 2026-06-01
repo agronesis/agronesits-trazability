@@ -22,6 +22,46 @@ export async function getClasificacionesPorLote(loteId: string): Promise<Clasifi
   return data as unknown as Clasificacion[]
 }
 
+export type ClasificacionResumenRow = {
+  lote_id: string
+  peso_bueno_kg: number | null
+  aportes: Array<{ kg_neto_descartable: number | null }> | null
+}
+
+/**
+ * Devuelve un resumen (lote_id, peso_bueno_kg y neto descartable de los aportes)
+ * de TODAS las clasificaciones, paginando para superar el tope de 1000 filas que
+ * PostgREST/Supabase aplica por defecto a cada respuesta. Pensado para vistas
+ * agregadas (dashboard, listado) que necesitan todas las sesiones de una vez.
+ */
+export async function getClasificacionesResumen(): Promise<ClasificacionResumenRow[]> {
+  const pageSize = 1000
+  const all: ClasificacionResumenRow[] = []
+  let from = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(`
+        lote_id,
+        peso_bueno_kg,
+        aportes:clasificacion_aportes(kg_neto_descartable)
+      `)
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1)
+
+    if (error) throw new Error(error.message)
+
+    const rows = (data ?? []) as unknown as ClasificacionResumenRow[]
+    all.push(...rows)
+
+    if (rows.length < pageSize) break
+    from += pageSize
+  }
+
+  return all
+}
+
 /**
  * Guarda (upsert) la sesión de clasificación de un lote y reemplaza todos sus aportes.
  */

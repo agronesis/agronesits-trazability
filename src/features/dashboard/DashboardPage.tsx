@@ -16,8 +16,8 @@ import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/shared/FormField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
-import { supabase } from '@/lib/supabase'
 import { getLotes } from '@/services/lotes.service'
+import { getClasificacionesResumen } from '@/services/clasificaciones.service'
 import type { Lote, VariedadProducto } from '@/types/models'
 
 type FiltroModo = 'dia' | 'rango'
@@ -202,21 +202,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [lotes, clasificacionesResult] = await Promise.all([
+        const [lotes, clasificacionesRows] = await Promise.all([
           getLotes(),
-          supabase
-            .from('clasificaciones')
-            .select(`
-              lote_id,
-              peso_bueno_kg,
-              aportes:clasificacion_aportes(kg_neto_descartable)
-            `)
-            .order('created_at', { ascending: true }),
+          getClasificacionesResumen(),
         ])
-
-        if (clasificacionesResult.error) throw clasificacionesResult.error
-
-        const clasificacionesRows = (clasificacionesResult.data ?? []) as DashboardClasificacionRow[]
 
         const clasificacionesPorLote = clasificacionesRows.reduce<Record<string, DashboardClasificacionRow[]>>((acc, row) => {
           const loteId = row.lote_id

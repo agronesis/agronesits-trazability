@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CALIDAD_PRODUCTO_CONFIG, ESTADO_LOTE_CONFIG, TIPO_PRODUCCION_CONFIG, VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
 import { formatFecha, formatPeso } from '@/utils/formatters'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
-import { getClasificacionesPorLote } from '@/services/clasificaciones.service'
+import { getClasificacionesPorLote, getClasificacionesResumen } from '@/services/clasificaciones.service'
 import { generateLotesSeleccionadosExcel, type LotesSeleccionadosExportRow } from '../../utils/lotes-seleccionados-excel'
 import { generateLotesIngresadosExcel, type LotesIngresadosExportRow } from '../../utils/lotes-ingresados-excel'
 import type { LoteFormData } from '@/utils/validators'
@@ -102,27 +102,25 @@ export default function LotesPage() {
       }
 
       try {
-        const resumenes = await Promise.all(
-          lotesConClasificacion.map(async (lote) => {
-            const sesiones = await getClasificacionesPorLote(lote.id)
-            const sesion = sesiones.at(-1)
-            if (!sesion) return { loteId: lote.id, merma: 0 }
-
-            const totalNetoDescartable = (sesion.aportes ?? []).reduce(
-              (acc, aporte) => acc + Number(aporte.kg_neto_descartable ?? 0),
-              0
-            )
-            const totalProcesado = Number(sesion.peso_bueno_kg ?? 0) + totalNetoDescartable
-            const merma = roundTo2(Number(lote.peso_neto_kg ?? 0) - totalProcesado)
-            return { loteId: lote.id, merma }
-          })
-        )
-
+        // Una sola consulta paginada en vez de N peticiones por lote: evita que
+        // un único fallo (Promise.all) vacíe todo el mapa de mermas.
+        const resumenRows = await getClasificacionesResumen()
         if (cancelled) return
 
+        const netoDescartablePorLote = resumenRows.reduce<Record<string, number>>((acc, row) => {
+          if (!row.lote_id) return acc
+          const totalNetoDescartable = (row.aportes ?? []).reduce(
+            (sum, aporte) => sum + Number(aporte.kg_neto_descartable ?? 0),
+            0
+          )
+          acc[row.lote_id] = (acc[row.lote_id] ?? 0) + Number(row.peso_bueno_kg ?? 0) + totalNetoDescartable
+          return acc
+        }, {})
+
         setMermaPorLote(
-          resumenes.reduce<Record<string, number>>((acc, item) => {
-            acc[item.loteId] = item.merma
+          lotesConClasificacion.reduce<Record<string, number>>((acc, lote) => {
+            const totalProcesado = netoDescartablePorLote[lote.id] ?? 0
+            acc[lote.id] = roundTo2(Number(lote.peso_neto_kg ?? 0) - totalProcesado)
             return acc
           }, {})
         )
