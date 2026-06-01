@@ -50,6 +50,7 @@ export default function LotesPage() {
   const [descargandoSeleccionados, setDescargandoSeleccionados] = useState(false)
   const [descargandoIngresados, setDescargandoIngresados] = useState(false)
   const [mermaPorLote, setMermaPorLote] = useState<Record<string, number>>({})
+  const [cargandoMermas, setCargandoMermas] = useState(true)
   const canCreateLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_CREATE)
   const canDeleteLotes = hasPermission(roles, APP_PERMISSIONS.LOTES_DELETE)
   const canPrintLoteTicket = hasPermission(roles, APP_PERMISSIONS.LOTES_PRINT_TICKET)
@@ -97,9 +98,14 @@ export default function LotesPage() {
     const cargarMermas = async () => {
       const lotesConClasificacion = lotes.filter((l) => l.estado !== 'ingresado')
       if (lotesConClasificacion.length === 0) {
-        if (!cancelled) setMermaPorLote({})
+        if (!cancelled) {
+          setMermaPorLote({})
+          setCargandoMermas(false)
+        }
         return
       }
+
+      if (!cancelled) setCargandoMermas(true)
 
       try {
         // Una sola consulta paginada en vez de N peticiones por lote: evita que
@@ -128,6 +134,8 @@ export default function LotesPage() {
         if (!cancelled) {
           setMermaPorLote({})
         }
+      } finally {
+        if (!cancelled) setCargandoMermas(false)
       }
     }
 
@@ -438,6 +446,17 @@ export default function LotesPage() {
               <div className="flex items-center gap-2 shrink-0">
                 {(() => {
                   const merma = mermaPorLote[l.id]
+                  // Mientras se cargan las mermas, los lotes ya clasificados muestran un
+                  // placeholder animado en vez de un "-" que se confunde con "sin dato".
+                  const mostrandoCarga = l.estado !== 'ingresado' && cargandoMermas && merma === undefined
+                  if (mostrandoCarga) {
+                    return (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground animate-pulse">
+                        Merma: <span className="ml-1 inline-block h-3 w-10 rounded bg-muted-foreground/30" />
+                      </span>
+                    )
+                  }
+
                   const hasMerma = l.estado !== 'ingresado' && merma !== undefined
                   const mermaValor = Number(merma ?? 0)
                   const mermaTexto = hasMerma ? formatPeso(mermaValor) : '-'
