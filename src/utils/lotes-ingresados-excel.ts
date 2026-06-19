@@ -4,6 +4,8 @@ import { formatFecha } from '@/utils/formatters'
 export interface LotesIngresadosExportRow {
   codigo: string
   agricultor: string
+  dni: string
+  lugarProduccion: string
   fechaCosecha: string | null
   fechaRecepcion: string | null
   variedad: string
@@ -16,6 +18,8 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
   const headers = [
     'CODIGO',
     'AGRICULTOR',
+    'DNI',
+    'LUGAR DE PRODUCCION',
     'FECHA DE COSECHA',
     'FECHA DE RECEPCION',
     'VARIEDAD',
@@ -32,6 +36,8 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
     ...rows.map((row) => [
       row.codigo,
       row.agricultor,
+      row.dni,
+      row.lugarProduccion,
       formatFecha(row.fechaCosecha),
       formatFecha(row.fechaRecepcion),
       row.variedad,
@@ -46,6 +52,8 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
   ws['!cols'] = [
     { wch: 20 },
     { wch: 32 },
+    { wch: 12 },
+    { wch: 28 },
     { wch: 18 },
     { wch: 18 },
     { wch: 16 },
@@ -54,7 +62,7 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
     { wch: 14 },
   ]
 
-  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:H1')
+  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:J1')
   for (let c = range.s.c; c <= range.e.c; c++) {
     const ref = XLSX.utils.encode_cell({ r: 3, c })
     if (!ws[ref]) continue
@@ -67,10 +75,10 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
   }
 
   for (let r = 4; r <= range.e.r; r++) {
-    for (let c = 0; c <= 7; c++) {
+    for (let c = 0; c <= 9; c++) {
       const ref = XLSX.utils.encode_cell({ r, c })
       if (!ws[ref]) continue
-      const isNumber = c >= 5
+      const isNumber = c >= 7
       ws[ref].s = {
         border: thinBorder(),
         alignment: { horizontal: isNumber ? 'right' : 'left', vertical: 'center' },

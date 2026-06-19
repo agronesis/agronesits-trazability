@@ -5,6 +5,8 @@ export interface LotesSeleccionadosExportRow {
   codigoAgricultor: string
   sublote: string
   agricultor: string
+  dni: string
+  lugarProduccion: string
   fechaRecepcion: string | null
   variedad: string
   jabasIngresadas: number
@@ -27,6 +29,8 @@ export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRo
     'Codigo agricultor',
     'Sub lote',
     'Nombre del agricultor',
+    'DNI',
+    'Lugar de produccion',
     'Fecha de recepcion',
     'Variedad',
     'Jabas ingresadas',
@@ -53,6 +57,8 @@ export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRo
       row.codigoAgricultor,
       row.sublote,
       row.agricultor,
+      row.dni,
+      row.lugarProduccion,
       formatFecha(row.fechaRecepcion),
       row.variedad,
       row.jabasIngresadas,
@@ -77,6 +83,8 @@ export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRo
     { wch: 16 },
     { wch: 14 },
     { wch: 32 },
+    { wch: 12 },
+    { wch: 28 },
     { wch: 16 },
     { wch: 14 },
     { wch: 14 },
@@ -94,7 +102,7 @@ export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRo
     { wch: 12 },
   ]
 
-  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:R1')
+  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:T1')
   for (let c = range.s.c; c <= range.e.c; c++) {
     const ref = XLSX.utils.encode_cell({ r: 3, c })
     if (!ws[ref]) continue
@@ -107,12 +115,12 @@ export function generateLotesSeleccionadosExcel(rows: LotesSeleccionadosExportRo
   }
 
   for (let r = 4; r <= range.e.r; r++) {
-    for (let c = 0; c <= 17; c++) {
+    for (let c = 0; c <= 19; c++) {
       const ref = XLSX.utils.encode_cell({ r, c })
       if (!ws[ref]) continue
 
-      const isNumber = c >= 5 && c <= 14
-      const isPercent = c >= 15 && c <= 17
+      const isNumber = c >= 7 && c <= 16
+      const isPercent = c >= 17 && c <= 19
 
       ws[ref].s = {
         border: thinBorder(),

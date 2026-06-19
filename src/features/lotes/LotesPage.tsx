@@ -188,6 +188,8 @@ export default function LotesPage() {
           codigoAgricultor: lote.codigo_lote_agricultor ?? lote.codigo,
           sublote: lote.sublote ?? '-',
           agricultor: lote.agricultor ? `${lote.agricultor.apellido}, ${lote.agricultor.nombre}` : '-',
+          dni: lote.agricultor?.dni ?? '-',
+          lugarProduccion: lote.agricultor?.ubicacion ?? '-',
           fechaRecepcion: lote.fecha_ingreso,
           variedad: lote.producto ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label : '-',
           jabasIngresadas: Number(lote.num_cubetas ?? 0),
@@ -227,6 +229,8 @@ export default function LotesPage() {
       const rows: LotesIngresadosExportRow[] = lotesIngresados.map((lote) => ({
         codigo: lote.codigo_lote_agricultor ?? lote.codigo,
         agricultor: lote.agricultor ? `${lote.agricultor.apellido}, ${lote.agricultor.nombre}` : '-',
+        dni: lote.agricultor?.dni ?? '-',
+        lugarProduccion: lote.agricultor?.ubicacion ?? '-',
         fechaCosecha: lote.fecha_cosecha,
         fechaRecepcion: lote.fecha_ingreso,
         variedad: lote.producto ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label : '-',
