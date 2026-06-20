@@ -6,6 +6,7 @@ export interface LotesIngresadosExportRow {
   agricultor: string
   dni: string
   lugarProduccion: string
+  numeroCuenta: string
   fechaCosecha: string | null
   fechaRecepcion: string | null
   variedad: string
@@ -20,6 +21,7 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
     'AGRICULTOR',
     'DNI',
     'LUGAR DE PRODUCCION',
+    'NUMERO DE CUENTA',
     'FECHA DE COSECHA',
     'FECHA DE RECEPCION',
     'VARIEDAD',
@@ -38,6 +40,7 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
       row.agricultor,
       row.dni,
       row.lugarProduccion,
+      row.numeroCuenta,
       formatFecha(row.fechaCosecha),
       formatFecha(row.fechaRecepcion),
       row.variedad,
@@ -54,6 +57,7 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
     { wch: 32 },
     { wch: 12 },
     { wch: 28 },
+    { wch: 20 },
     { wch: 18 },
     { wch: 18 },
     { wch: 16 },
@@ -62,7 +66,7 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
     { wch: 14 },
   ]
 
-  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:J1')
+  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:K1')
   for (let c = range.s.c; c <= range.e.c; c++) {
     const ref = XLSX.utils.encode_cell({ r: 3, c })
     if (!ws[ref]) continue
@@ -75,10 +79,10 @@ export function generateLotesIngresadosExcel(rows: LotesIngresadosExportRow[]): 
   }
 
   for (let r = 4; r <= range.e.r; r++) {
-    for (let c = 0; c <= 9; c++) {
+    for (let c = 0; c <= 10; c++) {
       const ref = XLSX.utils.encode_cell({ r, c })
       if (!ws[ref]) continue
-      const isNumber = c >= 7
+      const isNumber = c >= 8
       ws[ref].s = {
         border: thinBorder(),
         alignment: { horizontal: isNumber ? 'right' : 'left', vertical: 'center' },
