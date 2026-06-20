@@ -20,14 +20,32 @@ export interface LoteEmpaquetadoOperacionRow extends Pick<Lote, 'id' | 'codigo' 
   empaquetados: Array<{ num_cajas: number | null }> | null
 }
 
+/**
+ * Devuelve TODOS los lotes, paginando para superar el tope de 1000 filas que
+ * PostgREST/Supabase aplica por defecto a cada respuesta.
+ */
 export async function getLotes(): Promise<Lote[]> {
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select(SELECT_COMPLETO)
-    .order('created_at', { ascending: false })
+  const pageSize = 1000
+  const all: Lote[] = []
+  let from = 0
 
-  if (error) throw new Error(error.message)
-  return data as unknown as Lote[]
+  while (true) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(SELECT_COMPLETO)
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1)
+
+    if (error) throw new Error(error.message)
+
+    const rows = (data ?? []) as unknown as Lote[]
+    all.push(...rows)
+
+    if (rows.length < pageSize) break
+    from += pageSize
+  }
+
+  return all
 }
 
 export async function getLotesEmpaquetadoOperacion(fechaIngreso: string): Promise<LoteEmpaquetadoOperacionRow[]> {
