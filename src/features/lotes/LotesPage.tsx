@@ -18,11 +18,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CALIDAD_PRODUCTO_CONFIG, ESTADO_LOTE_CONFIG, TIPO_PRODUCCION_CONFIG, VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
 import { formatFecha, formatPeso } from '@/utils/formatters'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
-import { getClasificacionesPorLote, getClasificacionesResumen } from '@/services/clasificaciones.service'
+import { getClasificacionesPorLotes, getClasificacionesResumen } from '@/services/clasificaciones.service'
 import { generateLotesSeleccionadosExcel, type LotesSeleccionadosExportRow } from '../../utils/lotes-seleccionados-excel'
 import { generateLotesIngresadosExcel, type LotesIngresadosExportRow } from '../../utils/lotes-ingresados-excel'
 import type { LoteFormData } from '@/utils/validators'
-import type { EstadoLote, Lote, VariedadProducto } from '@/types/models'
+import type { Clasificacion, EstadoLote, Lote, VariedadProducto } from '@/types/models'
 import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, canEditLote, hasPermission } from '@/lib/permissions'
 import { APP_ROLES } from '@/types/auth'
@@ -158,15 +158,14 @@ export default function LotesPage() {
     setDescargandoSeleccionados(true)
 
     try {
-      const clasificacionesPorLote = await Promise.all(
-        lotesSeleccionados.map(async (lote) => {
-          const sesiones = await getClasificacionesPorLote(lote.id)
-          const clasificacionReciente = sesiones.at(-1)
-          return { loteId: lote.id, clasificacion: clasificacionReciente }
-        })
-      )
+      const sesiones = await getClasificacionesPorLotes(lotesSeleccionados.map((lote) => lote.id))
 
-      const mapaClasificacion = new Map(clasificacionesPorLote.map((item) => [item.loteId, item.clasificacion]))
+      // Solo hay una sesión por lote (onConflict lote_id); al venir ordenadas por
+      // created_at asc, la última en insertarse en el mapa es la más reciente.
+      const mapaClasificacion = new Map<string, Clasificacion>()
+      for (const sesion of sesiones) {
+        mapaClasificacion.set(sesion.lote_id, sesion)
+      }
 
       const rows: LotesSeleccionadosExportRow[] = lotesSeleccionados.map((lote) => {
         const clasificacion = mapaClasificacion.get(lote.id)

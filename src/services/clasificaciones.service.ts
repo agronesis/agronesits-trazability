@@ -22,6 +22,37 @@ export async function getClasificacionesPorLote(loteId: string): Promise<Clasifi
   return data as unknown as Clasificacion[]
 }
 
+/**
+ * Devuelve las sesiones de clasificación (con sus aportes) de varios lotes en una
+ * sola tanda de consultas, troceando los IDs para no exceder el límite de longitud
+ * de URL de PostgREST. Evita el patrón N+1 (una petición por lote) que satura el
+ * pool de conexiones del navegador y provoca "TypeError: Failed to fetch" cuando
+ * hay muchos lotes seleccionados.
+ */
+export async function getClasificacionesPorLotes(loteIds: string[]): Promise<Clasificacion[]> {
+  if (loteIds.length === 0) return []
+
+  const chunkSize = 200
+  const all: Clasificacion[] = []
+
+  for (let i = 0; i < loteIds.length; i += chunkSize) {
+    const chunk = loteIds.slice(i, i + chunkSize)
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(`
+        *,
+        aportes:clasificacion_aportes(*, colaborador:colaboradores(id, nombre, apellido, codigo))
+      `)
+      .in('lote_id', chunk)
+      .order('created_at', { ascending: true })
+
+    if (error) throw new Error(error.message)
+    all.push(...((data ?? []) as unknown as Clasificacion[]))
+  }
+
+  return all
+}
+
 export type ClasificacionResumenRow = {
   lote_id: string
   peso_bueno_kg: number | null
