@@ -61,7 +61,10 @@ export default function LotesPage() {
     roles.includes(APP_ROLES.OPERATIVO_PLANTA_DESPACHO) ||
     roles.includes(APP_ROLES.PADRON_AGRICULTORES)
   const hasFiltrosActivos = busqueda.trim() !== '' || filtroEstado !== 'todos' || filtroVariedad !== 'todos' || filtroFechaIngreso !== ''
-  const lotesClasificados = lotes.filter((l) => l.estado === 'clasificado')
+  // El flujo de estados es lineal (ingresado → clasificado → empaquetado → ...),
+  // por lo que todo lote que no esté en 'ingresado' ya fue clasificado y debe
+  // seguir apareciendo en el export de clasificados aunque avance de estado.
+  const lotesClasificados = lotes.filter((l) => l.estado !== 'ingresado')
   // Todo lote del sistema fue ingresado/recepcionado en origen,
   // por lo que este export incluye todos los estados actuales.
   const lotesIngresados = lotes
@@ -151,7 +154,7 @@ export default function LotesPage() {
 
     const lotesSeleccionados = lotesClasificados
     if (lotesSeleccionados.length === 0) {
-      window.alert('No hay lotes con estado clasificado para descargar.')
+      window.alert('No hay lotes clasificados para descargar.')
       return
     }
 
