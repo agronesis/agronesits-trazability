@@ -10,6 +10,7 @@ import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { LoadingPage, Spinner } from '@/components/shared/Spinner'
 import { EstadoActivoBadge } from '@/components/shared/StatusBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { ToastContainer, useToast } from '@/components/shared/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -35,6 +36,8 @@ export default function AgricultoresPage() {
   const [paginaActual, setPaginaActual] = useState(1)
   const [tamanoPagina, setTamanoPagina] = useState(12)
   const [aEliminar, setAEliminar] = useState<string | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const { toasts, toast, remove } = useToast()
   const canManageAgricultores = hasPermission(roles, APP_PERMISSIONS.AGRICULTORES_MANAGE)
 
   const q = busqueda.trim().toLowerCase()
@@ -119,7 +122,24 @@ export default function AgricultoresPage() {
 
   const handleEliminar = async (id: string) => {
     if (!canManageAgricultores) return
-    await eliminar(id)
+    setEliminando(true)
+    try {
+      await eliminar(id)
+      setAEliminar(null)
+      toast('success', 'Agricultor eliminado')
+    } catch (e) {
+      const msg = (e as Error).message ?? ''
+      const esReferenciado =
+        msg.includes('foreign key') || msg.includes('23503') || msg.includes('still referenced')
+      toast(
+        'error',
+        esReferenciado
+          ? 'No se puede eliminar: el agricultor tiene lotes, liquidaciones o cubetas asociadas.'
+          : `No se pudo eliminar: ${msg}`
+      )
+    } finally {
+      setEliminando(false)
+    }
   }
 
   if (loading) return <LoadingPage />
@@ -127,6 +147,7 @@ export default function AgricultoresPage() {
 
   return (
     <div>
+      <ToastContainer toasts={toasts} onRemove={remove} />
       <PageHeader
         title="Agricultores"
         actions={canManageAgricultores ? (
@@ -319,8 +340,9 @@ export default function AgricultoresPage() {
           title="¿Eliminar agricultor?"
           description="Esta acción no se puede deshacer."
           confirmLabel="Eliminar"
-          onConfirm={() => { handleEliminar(aEliminar!); setAEliminar(null) }}
-          onCancel={() => setAEliminar(null)}
+          loading={eliminando}
+          onConfirm={() => { void handleEliminar(aEliminar!) }}
+          onCancel={() => { if (!eliminando) setAEliminar(null) }}
         />
       )}
 
