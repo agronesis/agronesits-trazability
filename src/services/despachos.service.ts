@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { normalizarNumeroPallet } from '@/utils/business-rules'
-import type { Despacho, DespachoInsert, DespachoPallet, VariedadProducto, CalidadProducto } from '@/types/models'
+import type { Despacho, DespachoInsert, DespachoPallet, EstadoLote, VariedadProducto, CalidadProducto } from '@/types/models'
 import type { PackingListData, PackingListRow } from '@/utils/packing-list-excel'
 import type { Anexo41Data, Anexo41Row } from '@/utils/anexo41-excel'
 
@@ -47,6 +47,47 @@ type DespachoPalletUsageRow = {
   despacho_id: string
   lote_id: string
   numero_pallet: string
+}
+
+export type LoteDespachoPreasignado = {
+  id: string
+  codigo: string
+  codigo_lote_agricultor: string | null
+  sublote: string | null
+  estado: EstadoLote
+  despacho_preasignado: string
+  pallet_preasignado: string | null
+  cajas_preasignadas: number | null
+  agricultor: { id: string; nombre: string; apellido: string } | null
+  producto: { id: string; nombre: string; variedad: VariedadProducto } | null
+  empaquetados: Array<{ numero_pallet: string; num_cajas: number; fecha_empaquetado: string; destino: string }> | null
+}
+
+/**
+ * Lotes con N° de despacho asignado desde Empaquetado (asignación de pallet).
+ * La página de Despachos los agrupa por ese número.
+ */
+export async function getLotesConDespachoPreasignado(): Promise<LoteDespachoPreasignado[]> {
+  const { data, error } = await supabase
+    .from('lotes')
+    .select(`
+      id,
+      codigo,
+      codigo_lote_agricultor,
+      sublote,
+      estado,
+      despacho_preasignado,
+      pallet_preasignado,
+      cajas_preasignadas,
+      agricultor:agricultores!lotes_agricultor_id_fkey(id, nombre, apellido),
+      producto:productos(id, nombre, variedad),
+      empaquetados(numero_pallet, num_cajas, fecha_empaquetado, destino)
+    `)
+    .not('despacho_preasignado', 'is', null)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data ?? []) as unknown as LoteDespachoPreasignado[]
 }
 
 export async function getDespachosPorLote(loteId: string): Promise<Despacho[]> {

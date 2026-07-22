@@ -161,6 +161,9 @@ export interface Database {
           codigo_lote_agricultor: string | null
           sublote: string | null
           observaciones: string | null
+          pallet_preasignado: string | null
+          cajas_preasignadas: number | null
+          despacho_preasignado: string | null
           estado: 'ingresado' | 'en_clasificacion' | 'clasificado' | 'empaquetado' | 'en_despacho' | 'despachado' | 'liquidado'
         }
         Insert: Omit<Database['public']['Tables']['lotes']['Row'], 'id' | 'created_at' | 'updated_at'>

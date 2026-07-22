@@ -119,6 +119,9 @@ export interface Lote extends BaseEntity {
   codigo_lote_agricultor: string | null
   sublote: string | null
   observaciones: string | null
+  pallet_preasignado: string | null
+  cajas_preasignadas: number | null
+  despacho_preasignado: string | null
   estado: EstadoLote
   // relaciones (join)
   agricultor?: Agricultor

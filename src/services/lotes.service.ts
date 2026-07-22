@@ -12,11 +12,11 @@ const SELECT_COMPLETO = `
   centro_acopio:centros_acopio(*)
 `
 
-export interface LoteEmpaquetadoOperacionRow extends Pick<Lote, 'id' | 'codigo' | 'fecha_ingreso' | 'fecha_cosecha' | 'estado' | 'codigo_lote_agricultor' | 'sublote'> {
+export interface LoteEmpaquetadoOperacionRow extends Pick<Lote, 'id' | 'codigo' | 'fecha_ingreso' | 'fecha_cosecha' | 'estado' | 'codigo_lote_agricultor' | 'sublote' | 'pallet_preasignado' | 'cajas_preasignadas' | 'despacho_preasignado'> {
   estado: EstadoLote
   agricultor: Pick<Agricultor, 'id' | 'nombre' | 'apellido'> | null
   producto: Pick<Producto, 'id' | 'nombre' | 'variedad'> | null
-  clasificaciones: Array<Pick<Clasificacion, 'id' | 'peso_bueno_kg'>> | null
+  clasificaciones: Array<Pick<Clasificacion, 'id' | 'peso_bueno_kg' | 'fecha_clasificacion'>> | null
   empaquetados: Array<{ num_cajas: number | null }> | null
 }
 
@@ -48,7 +48,7 @@ export async function getLotes(): Promise<Lote[]> {
   return all
 }
 
-export async function getLotesEmpaquetadoOperacion(fechaIngreso: string): Promise<LoteEmpaquetadoOperacionRow[]> {
+export async function getLotesEmpaquetadoOperacion(fechaClasificacion: string): Promise<LoteEmpaquetadoOperacionRow[]> {
   const { data, error } = await supabase
     .from(TABLE)
     .select(`
@@ -59,12 +59,15 @@ export async function getLotesEmpaquetadoOperacion(fechaIngreso: string): Promis
       estado,
       codigo_lote_agricultor,
       sublote,
+      pallet_preasignado,
+      cajas_preasignadas,
+      despacho_preasignado,
       agricultor:agricultores!lotes_agricultor_id_fkey(id, nombre, apellido),
       producto:productos(id, nombre, variedad),
-      clasificaciones(id, peso_bueno_kg),
+      clasificaciones!inner(id, peso_bueno_kg, fecha_clasificacion),
       empaquetados(num_cajas)
     `)
-    .eq('fecha_ingreso', fechaIngreso)
+    .eq('clasificaciones.fecha_clasificacion', fechaClasificacion)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)

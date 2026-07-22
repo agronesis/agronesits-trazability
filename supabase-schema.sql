@@ -499,6 +499,11 @@ end;
 $$;
 alter table public.lotes add column if not exists codigo_lote_agricultor text null;
 alter table public.lotes add column if not exists sublote text null;
+-- Pre-asignación de empaquetado: pallet, cajas y n° de despacho definidos
+-- desde la lista diaria (1 pallet por lote).
+alter table public.lotes add column if not exists pallet_preasignado text null;
+alter table public.lotes add column if not exists cajas_preasignadas integer null;
+alter table public.lotes add column if not exists despacho_preasignado text null;
 alter table public.lotes add column if not exists fecha_cosecha date;
 update public.lotes
 set fecha_cosecha = coalesce(fecha_cosecha, fecha_ingreso)
@@ -712,13 +717,13 @@ create index if not exists idx_movimientos_cubetas_agricultor_id on public.movim
 drop trigger if exists trg_agricultores_updated_at on public.agricultores;
 create trigger trg_agricultores_updated_at before update on public.agricultores for each row execute function public.set_updated_at();
 
-drop trigger if exists trg_agricultores_protect_codigo on public.agricultores;
-create trigger trg_agricultores_protect_codigo before update on public.agricultores for each row execute function public.protect_agricultor_codigo();
-
+-- El código de agricultor lo define el usuario desde el frontend (ya no se
+-- autogenera con formato AGRI-000000). Se elimina el trigger de INSERT que lo
+-- sobreescribía, el default basado en secuencia, y el trigger que protegía el
+-- código en UPDATE (impedía corregirlo).
 drop trigger if exists trg_agricultores_codigo on public.agricultores;
-create trigger trg_agricultores_codigo before insert on public.agricultores for each row execute function public.set_agricultor_codigo();
-
-alter table public.agricultores alter column codigo set default public.generate_agricultor_codigo();
+drop trigger if exists trg_agricultores_protect_codigo on public.agricultores;
+alter table public.agricultores alter column codigo drop default;
 
 drop trigger if exists trg_acopiadores_updated_at on public.acopiadores;
 create trigger trg_acopiadores_updated_at before update on public.acopiadores for each row execute function public.set_updated_at();

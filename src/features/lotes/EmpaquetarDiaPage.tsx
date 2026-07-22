@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ROUTES, VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
 import { CLAVE_PESO_CAJA_EXPORTACION, getValorNumericoSistema } from '@/services/config-precios.service'
-import { getLotesEmpaquetadoOperacion, type LoteEmpaquetadoOperacionRow, actualizarEstadoLote } from '@/services/lotes.service'
+import { getLotesEmpaquetadoOperacion, type LoteEmpaquetadoOperacionRow, updateLote } from '@/services/lotes.service'
 import { createEmpaquetado, getResumenPalletsEmpaquetado } from '@/services/empaquetados.service'
 import { getColaboradores } from '@/services/colaboradores.service'
 import { calcularCajasExportables, DEFAULT_PESO_CAJA_EXPORTACION_KG, CAJAS_POR_PALLET, normalizarNumeroPallet } from '@/utils/business-rules'
@@ -37,6 +37,8 @@ type LoteResumen = {
   variedad: VariedadProducto | null
   estado: LoteEmpaquetadoOperacionRow['estado']
   cajasExportables: number
+  palletPreasignado: string | null
+  cajasPreasignadas: number | null
 }
 
 type FilaEmpaquetado = {
@@ -306,6 +308,8 @@ export default function EmpaquetarDiaPage() {
         variedad: row.producto?.variedad ?? null,
         estado: row.estado,
         cajasExportables: calcularCajasExportables(pesoBuenoKg, pesoCajaExportacionKg),
+        palletPreasignado: row.pallet_preasignado,
+        cajasPreasignadas: row.cajas_preasignadas,
       }
     })
   }, [pesoCajaExportacionKg, rows])
@@ -322,6 +326,19 @@ export default function EmpaquetarDiaPage() {
   useEffect(() => {
     const nuevasFilas: FilaEmpaquetado[] = []
     clasificados.forEach((lote) => {
+      // Si el lote tiene una pre-asignación hecha desde la lista diaria,
+      // usarla directamente (1 pallet por lote) en vez de segmentar automáticamente.
+      if (lote.palletPreasignado) {
+        nuevasFilas.push({
+          filaId: `${lote.loteId}-0`,
+          loteId: lote.loteId,
+          segmento: 0,
+          incluir: true,
+          numeroPallet: lote.palletPreasignado,
+          numCajas: lote.cajasPreasignadas != null ? String(lote.cajasPreasignadas) : '',
+        })
+        return
+      }
       if (lote.cajasExportables <= 0) {
         nuevasFilas.push({
           filaId: `${lote.loteId}-0`,
@@ -668,7 +685,7 @@ export default function EmpaquetarDiaPage() {
         }
 
         if (!lotesActualizados.has(fila.loteId)) {
-          await actualizarEstadoLote(fila.loteId, 'empaquetado')
+          await updateLote(fila.loteId, { estado: 'empaquetado', pallet_preasignado: null, cajas_preasignadas: null, despacho_preasignado: null })
           lotesActualizados.add(fila.loteId)
         }
       }

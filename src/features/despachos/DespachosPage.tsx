@@ -1,45 +1,49 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Pencil, Plus, Search, Trash2, Truck } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Search, Truck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingPage } from '@/components/shared/Spinner'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { DESTINO_DESPACHO_CONFIG, ROUTES, TIPO_DESPACHO_CONFIG, VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
-import { getDespachos, deleteDespacho } from '@/services/despachos.service'
-import { formatFecha, formatPeso } from '@/utils/formatters'
-import type { Despacho } from '@/types/models'
-import { useAuthStore } from '@/store/auth.store'
-import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
+import { VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
+import { getLotesConDespachoPreasignado, type LoteDespachoPreasignado } from '@/services/despachos.service'
+import { formatFecha } from '@/utils/formatters'
 
-function resumirPorVariedad(despacho: Despacho) {
-  return (despacho.pallets ?? []).reduce((acc, pallet) => {
-    const variedad = pallet.lote?.producto?.variedad
-    if (!variedad) return acc
-    acc[variedad] += pallet.num_cajas
-    return acc
-  }, { snow_peas: 0, sugar: 0 })
+type GrupoDespacho = {
+  numero: string
+  lotes: LoteDespachoPreasignado[]
+  totalCajas: number
+  pallets: string[]
+  resumenVariedad: { snow_peas: number; sugar: number }
+  fechas: string[]
+}
+
+function cajasDelLote(lote: LoteDespachoPreasignado): number {
+  const empaquetadas = (lote.empaquetados ?? []).reduce((acc, item) => acc + (item.num_cajas ?? 0), 0)
+  return empaquetadas > 0 ? empaquetadas : (lote.cajas_preasignadas ?? 0)
+}
+
+function nombreAgricultor(lote: LoteDespachoPreasignado): string {
+  if (!lote.agricultor) return 'Sin agricultor'
+  return `${lote.agricultor.apellido}, ${lote.agricultor.nombre}`
+}
+
+function codigoVisible(lote: LoteDespachoPreasignado): string {
+  return `${lote.codigo_lote_agricultor ?? lote.codigo}${lote.sublote ? ` - ${lote.sublote}` : ''}`
 }
 
 export default function DespachosPage() {
-  const navigate = useNavigate()
-  const roles = useAuthStore((state) => state.roles)
-  const [despachos, setDespachos] = useState<Despacho[]>([])
+  const [lotes, setLotes] = useState<LoteDespachoPreasignado[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
-  const [despachoAEliminar, setDespachoAEliminar] = useState<Despacho | null>(null)
-  const [eliminando, setEliminando] = useState(false)
-  const canManageDespachos = hasPermission(roles, APP_PERMISSIONS.DESPACHOS_MANAGE)
 
   const cargar = async () => {
     setLoading(true)
+    setError(null)
     try {
-      setDespachos(await getDespachos())
+      setLotes(await getLotesConDespachoPreasignado())
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -49,129 +53,142 @@ export default function DespachosPage() {
 
   useEffect(() => { cargar() }, [])
 
-  const handleEliminar = async () => {
-    if (!despachoAEliminar) return
-    setEliminando(true)
-    try {
-      await deleteDespacho(despachoAEliminar.id)
-      setDespachos((prev) => prev.filter((d) => d.id !== despachoAEliminar.id))
-      setDespachoAEliminar(null)
-    } catch (e) {
-      setDespachoAEliminar(null)
-      setError((e as Error).message)
-    } finally {
-      setEliminando(false)
+  const grupos = useMemo<GrupoDespacho[]>(() => {
+    const mapa = new Map<string, GrupoDespacho>()
+
+    for (const lote of lotes) {
+      const numero = lote.despacho_preasignado
+      if (!mapa.has(numero)) {
+        mapa.set(numero, {
+          numero,
+          lotes: [],
+          totalCajas: 0,
+          pallets: [],
+          resumenVariedad: { snow_peas: 0, sugar: 0 },
+          fechas: [],
+        })
+      }
+
+      const grupo = mapa.get(numero)!
+      grupo.lotes.push(lote)
+
+      const cajas = cajasDelLote(lote)
+      grupo.totalCajas += cajas
+
+      const variedad = lote.producto?.variedad
+      if (variedad === 'snow_peas' || variedad === 'sugar') {
+        grupo.resumenVariedad[variedad] += cajas
+      }
+
+      if (lote.pallet_preasignado && !grupo.pallets.includes(lote.pallet_preasignado)) {
+        grupo.pallets.push(lote.pallet_preasignado)
+      }
+      for (const emp of lote.empaquetados ?? []) {
+        if (emp.fecha_empaquetado && !grupo.fechas.includes(emp.fecha_empaquetado)) {
+          grupo.fechas.push(emp.fecha_empaquetado)
+        }
+      }
     }
-  }
+
+    return Array.from(mapa.values())
+      .map((grupo) => ({
+        ...grupo,
+        pallets: [...grupo.pallets].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0)),
+        fechas: [...grupo.fechas].sort(),
+        lotes: [...grupo.lotes].sort((a, b) => codigoVisible(a).localeCompare(codigoVisible(b))),
+      }))
+      .sort((a, b) => {
+        const na = parseInt(a.numero, 10)
+        const nb = parseInt(b.numero, 10)
+        if (!isNaN(na) && !isNaN(nb)) return nb - na
+        return b.numero.localeCompare(a.numero)
+      })
+  }, [lotes])
+
+  const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    if (!q) return grupos
+    return grupos.filter((grupo) =>
+      grupo.numero.toLowerCase().includes(q) ||
+      grupo.pallets.some((pallet) => pallet.toLowerCase().includes(q)) ||
+      grupo.lotes.some((lote) =>
+        codigoVisible(lote).toLowerCase().includes(q) ||
+        nombreAgricultor(lote).toLowerCase().includes(q)
+      )
+    )
+  }, [busqueda, grupos])
 
   if (loading) return <LoadingPage />
   if (error) return <ErrorMessage message={error} onRetry={cargar} />
-
-  const filtrados = despachos.filter((despacho) => {
-    if (!busqueda) return true
-    const q = busqueda.toLowerCase()
-    return despacho.codigo.toLowerCase().includes(q)
-      || despacho.exportador?.toLowerCase().includes(q)
-      || despacho.marca_caja?.toLowerCase().includes(q)
-      || despacho.transportista?.toLowerCase().includes(q)
-      || despacho.placa_vehiculo?.toLowerCase().includes(q)
-      || despacho.fecha_despacho.includes(q)
-  })
 
   return (
     <div>
       <PageHeader
         title="Despachos"
-        description="Registro operativo de despachos a partir de pallets empaquetados."
-        actions={canManageDespachos ? (
-          <Button onClick={() => navigate(ROUTES.DESPACHOS_NUEVO)}>
-            <Plus className="h-4 w-4 mr-2" /> Nuevo despacho
-          </Button>
-        ) : undefined}
+        description="Despachos generados desde la asignación de pallets en Empaquetado."
       />
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Buscar por codigo, exportador, marca, proveedor, placa o fecha..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+        <Input
+          className="pl-9"
+          placeholder="Buscar por N° despacho, lote, agricultor o pallet..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
       </div>
 
       {filtrados.length === 0 ? (
-        <EmptyState icon={<Truck className="h-8 w-8" />} title="Sin despachos" description="Registra el primer despacho seleccionando pallets empaquetados." />
+        <EmptyState
+          icon={<Truck className="h-8 w-8" />}
+          title="Sin despachos"
+          description="Los despachos aparecerán aquí al asignar pallets con N° de despacho en Empaquetado."
+        />
       ) : (
         <div className="flex flex-col gap-3">
-          {filtrados.map((despacho) => {
-            const resumen = resumirPorVariedad(despacho)
-            return (
-              <Card key={despacho.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/despachos/${despacho.id}`)}>
-                <CardContent className="pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-sm">{despacho.codigo}</p>
-                      <span className="text-xs text-muted-foreground">{formatFecha(despacho.fecha_despacho)}</span>
-                      <span className="text-xs rounded-full bg-muted px-2 py-0.5">{DESTINO_DESPACHO_CONFIG[despacho.destino].label}</span>
-                      <span className="text-xs rounded-full bg-muted px-2 py-0.5">{TIPO_DESPACHO_CONFIG[despacho.tipo_despacho].label}</span>
+          {filtrados.map((grupo) => (
+            <Card key={grupo.numero}>
+              <CardContent className="pt-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-800">
+                    <Truck className="h-4 w-4" />
+                    Despacho {grupo.numero}
+                  </span>
+                  {grupo.fechas.map((fecha) => (
+                    <span key={fecha} className="text-xs text-muted-foreground">{formatFecha(fecha)}</span>
+                  ))}
+                  <span className="ml-auto text-sm font-bold">{grupo.totalCajas} cajas</span>
+                </div>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {grupo.lotes.length} lote{grupo.lotes.length !== 1 ? 's' : ''} · Pallet{grupo.pallets.length !== 1 ? 's' : ''} {grupo.pallets.join(', ') || '-'}
+                  {' · '}
+                  {VARIEDAD_PRODUCTO_CONFIG.snow_peas.label}: <strong className="text-foreground">{grupo.resumenVariedad.snow_peas}</strong>
+                  {' · '}
+                  {VARIEDAD_PRODUCTO_CONFIG.sugar.label}: <strong className="text-foreground">{grupo.resumenVariedad.sugar}</strong>
+                </p>
+
+                <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100">
+                  {grupo.lotes.map((lote) => (
+                    <div key={lote.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                      <span className="font-semibold">{codigoVisible(lote)}</span>
+                      <span className="text-xs text-muted-foreground">{nombreAgricultor(lote)}</span>
+                      {lote.producto?.variedad && (
+                        <span className="text-xs text-muted-foreground">
+                          {VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label}
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        Pallet {lote.pallet_preasignado ?? '-'}
+                      </span>
+                      <span className="text-sm font-semibold">{cajasDelLote(lote)} cajas</span>
                     </div>
-                    <p className="text-muted-foreground text-xs mt-1">
-                      {despacho.exportador || 'Sin exportador'} · {despacho.marca_caja || 'Sin marca de caja'}
-                    </p>
-                    <p className="text-xs mt-2 text-muted-foreground">
-                      {VARIEDAD_PRODUCTO_CONFIG.snow_peas.label}: <strong className="text-foreground">{resumen.snow_peas}</strong> cajas · {VARIEDAD_PRODUCTO_CONFIG.sugar.label}: <strong className="text-foreground">{resumen.sugar}</strong> cajas
-                    </p>
-                  </div>
-
-                  <div className="text-left sm:text-right">
-                    <p className="font-bold text-sm">{despacho.num_cajas_despachadas} cajas</p>
-                    <p className="text-xs text-muted-foreground">{formatPeso(despacho.peso_neto_kg)} · {(despacho.pallets ?? []).length} pallet(es)</p>
-                    {(despacho.transportista || despacho.placa_vehiculo) && (
-                      <p className="text-xs text-muted-foreground mt-1">{despacho.transportista || '-'}{despacho.placa_vehiculo ? ` · ${despacho.placa_vehiculo}` : ''}</p>
-                    )}
-                    {canManageDespachos && (
-                      <div className="mt-2">
-                        <div className="flex gap-1.5">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDespachoAEliminar(despacho)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/despachos/${despacho.id}/editar`)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" /> Editar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
-
-      {canManageDespachos && (
-        <ConfirmDialog
-          open={Boolean(despachoAEliminar)}
-          title="Eliminar despacho"
-          description={`¿Está seguro que desea eliminar el despacho ${despachoAEliminar?.codigo ?? ''}? Se eliminarán también los pallets asociados. Esta acción no se puede deshacer.`}
-          confirmLabel="Eliminar"
-          variant="destructive"
-          loading={eliminando}
-          onConfirm={handleEliminar}
-          onCancel={() => setDespachoAEliminar(null)}
-        />
       )}
     </div>
   )

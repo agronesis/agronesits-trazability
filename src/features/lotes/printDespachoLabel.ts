@@ -71,13 +71,64 @@ interface LabelSize { width: string; height: string; page: string; compact?: boo
 const SIZE_A4_LANDSCAPE: LabelSize = { width: '297mm', height: '210mm', page: 'A4 landscape' }
 const SIZE_EMPAQUETADO: LabelSize = { width: '100mm', height: '60mm', page: '100mm 60mm', compact: true }
 
-function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = SIZE_A4_LANDSCAPE): string {
+function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = SIZE_A4_LANDSCAPE, copies = 1): string {
   const variedad = lote.producto
     ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label.toUpperCase()
     : 'N/A'
   const exporterName = EXPORTADOR_NOMBRE
 
   const c = size.compact
+
+  const labelBlock = `  <div class="label">
+    <table>
+      <tr>
+        <td class="left middle">
+          <div class="small">EXPORTED BY:</div>
+          <div class="exporter">${escapeHtml(exporterName)}</div>
+          <div class="small">RUC:20602289029</div>
+        </td>
+        <td>
+          <div>ADDRESS: AV. NICOLAS ARRIOLA NRO.2374 DPTO. 0 URB. EL PINO</div>
+          <div>(FRENTE AL BANCO DE CREDITO) BARRANCA, JR LIMA NRO. 934,</div>
+          <div>BARRANCA, BARRANCA.</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="left middle">
+          <div class="small">PACKING HOUSE:</div>
+          <div>AGRONESIS DEL PERU S.A.C.</div>
+        </td>
+        <td>
+          <div>ADDRESS: CAR, S/N NRO, S/N FND, FUNDO EL MILAGRO - YUNGAY - ANCASH</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" class="middle">
+          <table>
+            <tr>
+              <td>PRODUCT: HOLANTAO</td>
+              <td>VARIETY: ${escapeHtml(variedad)}</td>
+              <td>NET WEIGHT: 4.5 KG (10LB)</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td class="left middle" style="font-size:${c ? '12px' : '16px'};"><div>GGN: 4069453556065</div><div style="border-top:1px solid #000; margin-top:1px; padding-top:1px;">COC NUMBER: 4069453397316</div></td>
+        <td>
+          <div>TRACEABILITY CODE:</div>
+          <div class="trace">${escapeHtml(code)}</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" class="cert-line">${escapeHtml(CERTIFICACION_SENASA)}</td>
+      </tr>
+      <tr class="last-row">
+        <td class="center">PRODUCE OF PERU</td>
+        <td class="center">KEEP IN REFRIGERATION&nbsp;&nbsp;&nbsp;&nbsp;2°C</td>
+      </tr>
+    </table>
+  </div>`
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -97,19 +148,22 @@ function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = 
       color: #000;
       background: #fff;
       width: ${size.width};
-      height: ${size.height};
       margin: 0;
       padding: 0;
-      overflow: hidden;
     }
     .label {
       width: 100%;
-      height: 100%;
+      height: ${size.height};
       border: ${c ? '1px' : '2px'} solid #000;
       margin: 0;
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      break-inside: avoid;
+      page-break-after: always;
+    }
+    .label:last-child {
+      page-break-after: auto;
     }
     table {
       width: 100%;
@@ -163,56 +217,7 @@ function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = 
   </style>
 </head>
 <body>
-  <div class="label">
-    <table>
-      <tr>
-        <td class="left middle">
-          <div class="small">EXPORTED BY:</div>
-          <div class="exporter">${escapeHtml(exporterName)}</div>
-          <div class="small">RUC:20602289029</div>
-        </td>
-        <td>
-          <div>ADDRESS: AV. NICOLAS ARRIOLA NRO.2374 DPTO. 0 URB. EL PINO</div>
-          <div>(FRENTE AL BANCO DE CREDITO) BARRANCA, JR LIMA NRO. 934,</div>
-          <div>BARRANCA, BARRANCA.</div>
-        </td>
-      </tr>
-      <tr>
-        <td class="left middle">
-          <div class="small">PACKING HOUSE:</div>
-          <div>AGRONESIS DEL PERU S.A.C.</div>
-        </td>
-        <td>
-          <div>ADDRESS: CAR, S/N NRO, S/N FND, FUNDO EL MILAGRO - YUNGAY - ANCASH</div>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" class="middle">
-          <table>
-            <tr>
-              <td>PRODUCT: HOLANTAO</td>
-              <td>VARIETY: ${escapeHtml(variedad)}</td>
-              <td>NET WEIGHT: 4.5 KG (10LB)</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-      <tr>
-        <td class="left middle" style="font-size:${c ? '12px' : '16px'};"><div>GGN: 4069453556065</div><div style="border-top:1px solid #000; margin-top:1px; padding-top:1px;">COC NUMBER: 4069453397316</div></td>
-        <td>
-          <div>TRACEABILITY CODE:</div>
-          <div class="trace">${escapeHtml(code)}</div>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" class="cert-line">${escapeHtml(CERTIFICACION_SENASA)}</td>
-      </tr>
-      <tr class="last-row">
-        <td class="center">PRODUCE OF PERU</td>
-        <td class="center">KEEP IN REFRIGERATION&nbsp;&nbsp;&nbsp;&nbsp;2°C</td>
-      </tr>
-    </table>
-  </div>
+${Array.from({ length: Math.max(1, copies) }, () => labelBlock).join('\n')}
   <script>
     window.onload = function () {
       window.print();
@@ -227,6 +232,23 @@ export function printTraceabilityLabel(lote: Lote, code: string, size?: LabelSiz
   const printWindow = window.open('', '_blank', 'width=640,height=500')
   if (!printWindow) return
   printWindow.document.write(buildTraceabilityLabelHtml(lote, code, size))
+  printWindow.document.close()
+}
+
+/**
+ * Abre la ventana de impresión de forma síncrona (debe llamarse dentro del
+ * gesto del usuario, ANTES de cualquier `await`, para no ser bloqueada como popup).
+ */
+export function openPrintWindow(): Window | null {
+  return window.open('', '_blank', 'width=640,height=500')
+}
+
+/**
+ * Escribe en una ventana ya abierta la etiqueta compacta (100×60mm) repetida
+ * `copies` veces — una etiqueta por caja — en un solo trabajo de impresión.
+ */
+export function writeTraceabilityLabelCopies(printWindow: Window, lote: Lote, code: string, copies: number): void {
+  printWindow.document.write(buildTraceabilityLabelHtml(lote, code, SIZE_EMPAQUETADO, copies))
   printWindow.document.close()
 }
 
