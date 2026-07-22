@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Agricultor, Empaquetado, EmpaquetadoInsert, EstadoLote, Producto } from '@/types/models'
+import type { Agricultor, Empaquetado, EmpaquetadoInsert, EstadoLote, Producto, VariedadProducto } from '@/types/models'
 import { normalizarNumeroPallet } from '@/utils/business-rules'
 
 const TABLE = 'empaquetados' as const
@@ -73,6 +73,35 @@ export async function getResumenPalletsEmpaquetado(loteId?: string): Promise<Rec
     const pallet = normalizarNumeroPallet(row.numero_pallet ?? '')
     if (!pallet) return acc
     acc[pallet] = (acc[pallet] ?? 0) + (row.num_cajas ?? 0)
+    return acc
+  }, {})
+}
+
+export type ResumenPallet = { cajas: number; variedad: VariedadProducto | null }
+
+type ResumenPalletRow = {
+  numero_pallet: string | null
+  num_cajas: number | null
+  lote: { producto: { variedad: VariedadProducto } | null } | null
+}
+
+/**
+ * Ocupación por pallet con la variedad de su contenido (los pallets no
+ * combinan variedades; si datos legados mezclaran, se conserva la primera).
+ */
+export async function getResumenPalletsConVariedad(): Promise<Record<string, ResumenPallet>> {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('numero_pallet, num_cajas, lote:lotes(producto:productos(variedad))')
+
+  if (error) throw new Error(error.message)
+
+  return ((data ?? []) as unknown as ResumenPalletRow[]).reduce<Record<string, ResumenPallet>>((acc, row) => {
+    const pallet = normalizarNumeroPallet(row.numero_pallet ?? '')
+    if (!pallet) return acc
+    if (!acc[pallet]) acc[pallet] = { cajas: 0, variedad: null }
+    acc[pallet].cajas += row.num_cajas ?? 0
+    acc[pallet].variedad ??= row.lote?.producto?.variedad ?? null
     return acc
   }, {})
 }

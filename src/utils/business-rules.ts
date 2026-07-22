@@ -1,5 +1,5 @@
 import { TRANSICIONES_LOTE } from '@/constants'
-import type { EstadoLote } from '@/types/models'
+import type { EstadoLote, VariedadProducto } from '@/types/models'
 import type { CategoriaClasificacion, Clasificacion, Despacho } from '@/types/models'
 
 // ─────────────────────────────────────────────
@@ -9,6 +9,14 @@ import type { CategoriaClasificacion, Clasificacion, Despacho } from '@/types/mo
 export const DEFAULT_PESO_CAJA_EXPORTACION_KG = 4.65
 export const DEFAULT_PESO_CAJA_DESPACHO_KG = 4.5
 export const CAJAS_POR_PALLET = 172
+/** Capacidad del pallet según variedad; los pallets no combinan variedades. */
+export const CAJAS_POR_PALLET_POR_VARIEDAD: Record<VariedadProducto, number> = {
+  snow_peas: 175,
+  sugar: 203,
+}
+export function getCajasPorPallet(variedad: VariedadProducto | null | undefined): number {
+  return variedad ? CAJAS_POR_PALLET_POR_VARIEDAD[variedad] : CAJAS_POR_PALLET
+}
 export const MAX_PALLETS_POR_DESPACHO_MAR_AER = 20
 export const MAX_CAJAS_DESPACHO_MAR_AER = CAJAS_POR_PALLET * MAX_PALLETS_POR_DESPACHO_MAR_AER
 /** 3% del peso neto que corresponde al socio Alan Melendrez (Módulo 1 PDF) */

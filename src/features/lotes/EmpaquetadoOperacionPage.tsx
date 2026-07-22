@@ -15,9 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { VARIEDAD_PRODUCTO_CONFIG } from '@/constants'
 import { CLAVE_PESO_CAJA_EXPORTACION, getValorNumericoSistema } from '@/services/config-precios.service'
 import { getLotesEmpaquetadoOperacion, updateLote, type LoteEmpaquetadoOperacionRow } from '@/services/lotes.service'
-import { createEmpaquetado, getResumenPalletsEmpaquetado } from '@/services/empaquetados.service'
+import { createEmpaquetado, getResumenPalletsConVariedad, type ResumenPallet } from '@/services/empaquetados.service'
 import { useAuthStore } from '@/store/auth.store'
-import { calcularCajasExportables, CAJAS_POR_PALLET, DEFAULT_PESO_CAJA_EXPORTACION_KG, normalizarNumeroPallet } from '@/utils/business-rules'
+import { calcularCajasExportables, DEFAULT_PESO_CAJA_EXPORTACION_KG, getCajasPorPallet, normalizarNumeroPallet } from '@/utils/business-rules'
 import { formatFecha } from '@/utils/formatters'
 import { getTraceabilityCodeForDate, openPrintWindow, writeTraceabilityLabelCopies } from './printDespachoLabel'
 import type { DestinoEmpaquetado, Lote, VariedadProducto } from '@/types/models'
@@ -82,7 +82,7 @@ export default function EmpaquetadoOperacionPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
-  const [palletOcupacion, setPalletOcupacion] = useState<Record<string, number>>({})
+  const [palletOcupacion, setPalletOcupacion] = useState<Record<string, ResumenPallet>>({})
 
   // Modal de pre-asignación de pallet por lote
   const [loteAsignar, setLoteAsignar] = useState<LoteEmpaquetadoResumen | null>(null)
@@ -103,7 +103,7 @@ export default function EmpaquetadoOperacionPage() {
         const [data, pesoCajaConfigurado, pallets] = await Promise.all([
           getLotesEmpaquetadoOperacion(fecha),
           getValorNumericoSistema(CLAVE_PESO_CAJA_EXPORTACION, DEFAULT_PESO_CAJA_EXPORTACION_KG),
-          getResumenPalletsEmpaquetado(),
+          getResumenPalletsConVariedad(),
         ])
         if (!active) return
         setRows(data)
@@ -222,19 +222,23 @@ export default function EmpaquetadoOperacionPage() {
   }
 
   /**
-   * Cajas pre-asignadas al pallet por lotes que aún NO tienen registros de
-   * empaquetado (asignaciones legadas): no están en `palletOcupacion` (que se
-   * calcula desde la tabla empaquetados), así que se suman aparte.
-   * Las asignaciones nuevas sí crean su registro y ya cuentan en la ocupación.
+   * Ocupación del pallet combinando registros de empaquetado (servidor) con
+   * pre-asignaciones legadas sin registro (no cuentan en `palletOcupacion`).
+   * Devuelve cajas totales y la variedad del contenido (no se combinan).
    */
-  function cajasPreasignadasSinEmpaque(palletNorm: string, excluirLoteId?: string): number {
-    return rows
-      .filter((row) =>
-        row.id !== excluirLoteId &&
-        normalizarArray(row.empaquetados).length === 0 &&
-        normalizarNumeroPallet(row.pallet_preasignado ?? '') === palletNorm
-      )
-      .reduce((acc, row) => acc + (row.cajas_preasignadas ?? 0), 0)
+  function ocupacionPallet(palletNorm: string, excluirLoteId?: string): ResumenPallet {
+    const base = palletOcupacion[palletNorm]
+    const resultado: ResumenPallet = { cajas: base?.cajas ?? 0, variedad: base?.variedad ?? null }
+
+    for (const row of rows) {
+      if (row.id === excluirLoteId) continue
+      if (normalizarArray(row.empaquetados).length > 0) continue
+      if (normalizarNumeroPallet(row.pallet_preasignado ?? '') !== palletNorm) continue
+      resultado.cajas += row.cajas_preasignadas ?? 0
+      resultado.variedad ??= row.producto?.variedad ?? null
+    }
+
+    return resultado
   }
 
   async function guardarAsignacion() {
@@ -254,11 +258,23 @@ export default function EmpaquetadoOperacionPage() {
       return
     }
 
-    const cajasExistentes = (palletOcupacion[palletNorm] ?? 0) + cajasPreasignadasSinEmpaque(palletNorm, loteAsignar.loteId)
-    const totalEnPallet = cajasExistentes + cajas
+    const ocupacion = ocupacionPallet(palletNorm, loteAsignar.loteId)
 
-    if (totalEnPallet > CAJAS_POR_PALLET) {
-      setErrorAsignacion(`El pallet ${palletNorm} quedaría con ${totalEnPallet} cajas y excede el máximo de ${CAJAS_POR_PALLET}.`)
+    // Los pallets no combinan variedades: snow con snow, sugar con sugar.
+    if (ocupacion.variedad && loteAsignar.variedad && ocupacion.variedad !== loteAsignar.variedad) {
+      setErrorAsignacion(
+        `El pallet ${palletNorm} ya contiene ${VARIEDAD_PRODUCTO_CONFIG[ocupacion.variedad].label}; no se pueden combinar variedades en un mismo pallet.`
+      )
+      return
+    }
+
+    const capacidad = getCajasPorPallet(loteAsignar.variedad)
+    const totalEnPallet = ocupacion.cajas + cajas
+
+    if (totalEnPallet > capacidad) {
+      setErrorAsignacion(
+        `El pallet ${palletNorm} quedaría con ${totalEnPallet} cajas y excede el máximo de ${capacidad}${loteAsignar.variedad ? ` para ${VARIEDAD_PRODUCTO_CONFIG[loteAsignar.variedad].label}` : ''}.`
+      )
       return
     }
 
@@ -304,7 +320,13 @@ export default function EmpaquetadoOperacionPage() {
             : row
         )
       )
-      setPalletOcupacion((prev) => ({ ...prev, [palletNorm]: (prev[palletNorm] ?? 0) + cajas }))
+      setPalletOcupacion((prev) => ({
+        ...prev,
+        [palletNorm]: {
+          cajas: (prev[palletNorm]?.cajas ?? 0) + cajas,
+          variedad: prev[palletNorm]?.variedad ?? loteAsignar.variedad ?? null,
+        },
+      }))
       setLoteAsignar(null)
     } catch (e) {
       setErrorAsignacion((e as Error).message)
@@ -496,12 +518,16 @@ export default function EmpaquetadoOperacionPage() {
             const yaAsignado = !!loteAsignar.palletPreasignado
             const palletNorm = normalizarNumeroPallet(formPallet)
             const cajas = parseInt(formCajas, 10) || 0
-            const cajasExistentes = palletNorm
-              ? (palletOcupacion[palletNorm] ?? 0) + cajasPreasignadasSinEmpaque(palletNorm, loteAsignar.loteId)
-              : 0
+            const capacidad = getCajasPorPallet(loteAsignar.variedad)
+            const ocupacion = palletNorm
+              ? ocupacionPallet(palletNorm, loteAsignar.loteId)
+              : { cajas: 0, variedad: null }
+            const cajasExistentes = ocupacion.cajas
+            const variedadIncompatible = !yaAsignado && palletNorm !== '' &&
+              !!ocupacion.variedad && !!loteAsignar.variedad && ocupacion.variedad !== loteAsignar.variedad
             const totalEnPallet = cajasExistentes + cajas
-            const disponible = CAJAS_POR_PALLET - cajasExistentes
-            const excede = !yaAsignado && palletNorm !== '' && cajas > 0 && totalEnPallet > CAJAS_POR_PALLET
+            const disponible = capacidad - cajasExistentes
+            const excede = !yaAsignado && palletNorm !== '' && cajas > 0 && totalEnPallet > capacidad
             const codigoTrazabilidad = getTraceabilityCodeForDate(toLoteForTrazabilidad(loteAsignar), fecha)
 
             return (
@@ -526,13 +552,18 @@ export default function EmpaquetadoOperacionPage() {
                       value={formPallet}
                       onChange={(e) => { setFormPallet(e.target.value); setErrorAsignacion(null) }}
                       disabled={yaAsignado}
-                      className={excede ? 'border-red-400' : ''}
+                      className={excede || variedadIncompatible ? 'border-red-400' : ''}
                     />
-                    {!yaAsignado && palletNorm && (
+                    {variedadIncompatible && ocupacion.variedad && (
+                      <p className="text-xs text-red-500">
+                        Pallet con {VARIEDAD_PRODUCTO_CONFIG[ocupacion.variedad].label}: no se combinan variedades.
+                      </p>
+                    )}
+                    {!yaAsignado && !variedadIncompatible && palletNorm && (
                       <p className={`text-xs ${excede ? 'text-red-500' : disponible <= 20 ? 'text-amber-600' : 'text-slate-400'}`}>
                         {cajasExistentes > 0
-                          ? `${cajasExistentes} exist. + ${cajas} aquí = ${totalEnPallet}/${CAJAS_POR_PALLET}`
-                          : `${cajas} / ${CAJAS_POR_PALLET} · libres: ${Math.max(0, disponible - cajas)}`}
+                          ? `${cajasExistentes} exist. + ${cajas} aquí = ${totalEnPallet}/${capacidad}`
+                          : `${cajas} / ${capacidad} · libres: ${Math.max(0, disponible - cajas)}`}
                       </p>
                     )}
                   </div>
@@ -541,7 +572,7 @@ export default function EmpaquetadoOperacionPage() {
                     <Input
                       type="number"
                       min={1}
-                      max={CAJAS_POR_PALLET}
+                      max={capacidad}
                       value={formCajas}
                       onChange={(e) => { setFormCajas(e.target.value); setErrorAsignacion(null) }}
                       disabled={yaAsignado}
