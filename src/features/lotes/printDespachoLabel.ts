@@ -239,6 +239,160 @@ ${Array.from({ length: Math.max(1, copies) }, () => labelBlock).join('\n')}
 </html>`
 }
 
+/**
+ * Etiqueta con formato propio de VEGGIE SOURCE: todos los datos son fijos
+ * (producto, variedad, lote, pesos, direcciones); solo el código de
+ * trazabilidad es dinámico.
+ */
+function buildVeggieSourceLabelHtml(code: string, size: LabelSize = SIZE_EMPAQUETADO, copies = 1): string {
+  const c = size.compact
+
+  const labelBlock = `  <div class="label">
+    <table>
+      <tr class="head">
+        <td class="left center">PRODUCT</td>
+        <td class="center">VARIETY</td>
+        <td class="cat center">CAT</td>
+      </tr>
+      <tr>
+        <td class="left center big">SUGAR SNAPS</td>
+        <td class="center big">TC13</td>
+        <td class="cat center big">I</td>
+      </tr>
+      <tr>
+        <td class="left center"><span class="small">LOT:</span>&nbsp;&nbsp;<span class="big">537</span></td>
+        <td colspan="2">TRACEABILITY:</td>
+      </tr>
+      <tr>
+        <td class="left center"><span class="small">NET WEIGHT:</span>&nbsp;&nbsp;4.5 KG ( 10 Lbs )</td>
+        <td colspan="2" class="trace">${escapeHtml(code)}</td>
+      </tr>
+      <tr>
+        <td class="left center">
+          <div class="small">DISTRIBUTED BY:</div>
+          <div>VEGGIE SOURCE, INC.</div>
+          <div class="tiny">7700 IRVINE CENTER DR. STE 800</div>
+          <div class="tiny">IRVINE, CA 92618</div>
+          <div class="tiny">USA</div>
+        </td>
+        <td colspan="2" class="center middle">
+          <img class="logo" src="${window.location.origin}/veggie.webp" alt="Veggie Source" />
+        </td>
+      </tr>
+      <tr>
+        <td class="left">
+          <div class="small">PACKING HOUSE:</div>
+          <div class="tiny">ADDRESS: CAR, S/N NRO, S/N FND, FUNDO EL MILAGRO</div>
+          <div class="tiny">YUNGAY-ANCASH</div>
+          <div class="tiny">RUC: 20602289029</div>
+        </td>
+        <td colspan="2" class="split">
+          <div>GGN: 4069453556065</div>
+          <div class="split-line">KEEP IN REFRIGERATION 2°C</div>
+        </td>
+      </tr>
+      <tr class="last-row">
+        <td colspan="3" class="center">PRODUCE OF PERU</td>
+      </tr>
+      <tr class="last-row">
+        <td colspan="3" class="center">${escapeHtml(CERTIFICACION_SENASA)}</td>
+      </tr>
+    </table>
+  </div>`
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title></title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page {
+      size: ${size.page};
+      margin: 0;
+    }
+    html, body {
+      font-family: 'Arial Narrow', Arial, sans-serif;
+      font-size: ${c ? '9px' : '12px'};
+      line-height: ${c ? '1.05' : '1.15'};
+      color: #000;
+      background: #fff;
+      width: ${size.width};
+      margin: 0;
+      padding: 0;
+    }
+    .label {
+      width: 100%;
+      height: ${size.height};
+      border: ${c ? '1px' : '2px'} solid #000;
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      break-inside: avoid;
+      page-break-after: always;
+    }
+    .label:last-child {
+      page-break-after: auto;
+    }
+    table {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    td {
+      border: 1px solid #000;
+      padding: ${c ? '1.5px 2px' : '4px 6px'};
+      vertical-align: top;
+      font-weight: 700;
+      text-transform: uppercase;
+      overflow: hidden;
+    }
+    .left { width: 45%; }
+    .cat { width: 14%; }
+    .center { text-align: center; }
+    .middle { vertical-align: middle; }
+    .head td { padding: ${c ? '1px 2px' : '3px 6px'}; }
+    .big { font-size: ${c ? '11px' : '16px'}; font-weight: 800; }
+    .small { font-size: ${c ? '8px' : '11px'}; }
+    .tiny { font-size: ${c ? '6.5px' : '10px'}; }
+    .last-row td { padding: ${c ? '1px 2px' : '4px 6px'}; height: 1px; }
+    .trace {
+      font-family: 'Courier New', monospace;
+      font-size: ${c ? '20px' : '36px'};
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      vertical-align: middle;
+      letter-spacing: 0;
+    }
+    .logo {
+      max-width: 90%;
+      max-height: ${c ? '34px' : '60px'};
+      object-fit: contain;
+    }
+    .split div { padding: ${c ? '1px 0' : '3px 0'}; }
+    .split .split-line { border-top: 1px solid #000; }
+    @media print {
+      html, body { margin: 0 !important; padding: 0 !important; }
+      .label { margin: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+${Array.from({ length: Math.max(1, copies) }, () => labelBlock).join('\n')}
+  <script>
+    window.onload = function () {
+      window.print();
+      setTimeout(function () { window.close(); }, 500);
+    };
+  </script>
+</body>
+</html>`
+}
+
 export function printTraceabilityLabel(lote: Lote, code: string, size?: LabelSize): void {
   const printWindow = window.open('', '_blank', 'width=640,height=500')
   if (!printWindow) return
@@ -260,7 +414,11 @@ export function openPrintWindow(): Window | null {
  * `cliente` condiciona PRODUCT/VARIETY (FULLFRESH y VEGA PRODUCE → SUGAR SNAP).
  */
 export function writeTraceabilityLabelCopies(printWindow: Window, lote: Lote, code: string, copies: number, cliente?: string | null): void {
-  printWindow.document.write(buildTraceabilityLabelHtml(lote, code, SIZE_EMPAQUETADO, copies, cliente))
+  const clienteNormalizado = (cliente ?? '').trim().toUpperCase()
+  const html = clienteNormalizado === 'VEGGIE SOURCE'
+    ? buildVeggieSourceLabelHtml(code, SIZE_EMPAQUETADO, copies)
+    : buildTraceabilityLabelHtml(lote, code, SIZE_EMPAQUETADO, copies, cliente)
+  printWindow.document.write(html)
   printWindow.document.close()
 }
 
