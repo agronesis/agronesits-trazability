@@ -12,7 +12,7 @@ const SELECT_COMPLETO = `
   centro_acopio:centros_acopio(*)
 `
 
-export interface LoteEmpaquetadoOperacionRow extends Pick<Lote, 'id' | 'codigo' | 'fecha_ingreso' | 'fecha_cosecha' | 'estado' | 'codigo_lote_agricultor' | 'sublote' | 'pallet_preasignado' | 'cajas_preasignadas' | 'despacho_preasignado'> {
+export interface LoteEmpaquetadoOperacionRow extends Pick<Lote, 'id' | 'codigo' | 'fecha_ingreso' | 'fecha_cosecha' | 'estado' | 'codigo_lote_agricultor' | 'sublote' | 'pallet_preasignado' | 'cajas_preasignadas' | 'despacho_preasignado' | 'cliente_preasignado'> {
   estado: EstadoLote
   agricultor: Pick<Agricultor, 'id' | 'nombre' | 'apellido'> | null
   producto: Pick<Producto, 'id' | 'nombre' | 'variedad'> | null
@@ -62,6 +62,7 @@ export async function getLotesEmpaquetadoOperacion(fechaClasificacion: string): 
       pallet_preasignado,
       cajas_preasignadas,
       despacho_preasignado,
+      cliente_preasignado,
       agricultor:agricultores!lotes_agricultor_id_fkey(id, nombre, apellido),
       producto:productos(id, nombre, variedad),
       clasificaciones!inner(id, peso_bueno_kg, fecha_clasificacion),

@@ -29,6 +29,12 @@ const EXPORTADOR_NOMBRE = 'AGRONESIS DEL PERU S.A.C'
 const CERTIFICACION_SENASA = 'N°000299-MIDAGRI-SENASA-ANCASH'
 const EXPORTADOR_CODIGO_TRAZABILIDAD = 'AG'
 
+/** Clientes de empaquetado disponibles en la asignación de pallet */
+export const CLIENTES_EMPAQUETADO = ['VEGA PRODUCE', 'FULLFRESH', 'VEGGIE SOURCE'] as const
+
+/** Clientes cuya etiqueta cambia PRODUCT/VARIETY */
+const CLIENTES_SUGAR_SNAP = new Set(['VEGA PRODUCE', 'FULLFRESH'])
+
 function getFieldLotCode(lote: Lote): string {
   const raw = lote.codigo_lote_agricultor ?? ''
   const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -71,10 +77,15 @@ interface LabelSize { width: string; height: string; page: string; compact?: boo
 const SIZE_A4_LANDSCAPE: LabelSize = { width: '297mm', height: '210mm', page: 'A4 landscape' }
 const SIZE_EMPAQUETADO: LabelSize = { width: '100mm', height: '60mm', page: '100mm 60mm', compact: true }
 
-function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = SIZE_A4_LANDSCAPE, copies = 1): string {
-  const variedad = lote.producto
-    ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label.toUpperCase()
-    : 'N/A'
+function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = SIZE_A4_LANDSCAPE, copies = 1, cliente?: string | null): string {
+  // FULLFRESH y VEGA PRODUCE exigen etiqueta con producto/variedad propios
+  const clienteSugarSnap = CLIENTES_SUGAR_SNAP.has((cliente ?? '').trim().toUpperCase())
+  const productLabel = clienteSugarSnap ? 'SUGAR SNAP' : 'HOLANTAO'
+  const variedad = clienteSugarSnap
+    ? 'SL 3123 STRINGLESS'
+    : lote.producto
+      ? VARIEDAD_PRODUCTO_CONFIG[lote.producto.variedad].label.toUpperCase()
+      : 'N/A'
   const exporterName = EXPORTADOR_NOMBRE
 
   const c = size.compact
@@ -106,7 +117,7 @@ function buildTraceabilityLabelHtml(lote: Lote, code: string, size: LabelSize = 
         <td colspan="2" class="middle">
           <table>
             <tr>
-              <td>PRODUCT: HOLANTAO</td>
+              <td>PRODUCT: ${escapeHtml(productLabel)}</td>
               <td>VARIETY: ${escapeHtml(variedad)}</td>
               <td>NET WEIGHT: 4.5 KG (10LB)</td>
             </tr>
@@ -246,9 +257,10 @@ export function openPrintWindow(): Window | null {
 /**
  * Escribe en una ventana ya abierta la etiqueta compacta (100×60mm) repetida
  * `copies` veces — una etiqueta por caja — en un solo trabajo de impresión.
+ * `cliente` condiciona PRODUCT/VARIETY (FULLFRESH y VEGA PRODUCE → SUGAR SNAP).
  */
-export function writeTraceabilityLabelCopies(printWindow: Window, lote: Lote, code: string, copies: number): void {
-  printWindow.document.write(buildTraceabilityLabelHtml(lote, code, SIZE_EMPAQUETADO, copies))
+export function writeTraceabilityLabelCopies(printWindow: Window, lote: Lote, code: string, copies: number, cliente?: string | null): void {
+  printWindow.document.write(buildTraceabilityLabelHtml(lote, code, SIZE_EMPAQUETADO, copies, cliente))
   printWindow.document.close()
 }
 

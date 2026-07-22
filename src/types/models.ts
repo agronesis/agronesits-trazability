@@ -122,6 +122,7 @@ export interface Lote extends BaseEntity {
   pallet_preasignado: string | null
   cajas_preasignadas: number | null
   despacho_preasignado: string | null
+  cliente_preasignado: string | null
   estado: EstadoLote
   // relaciones (join)
   agricultor?: Agricultor

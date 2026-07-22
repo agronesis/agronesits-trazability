@@ -504,6 +504,7 @@ alter table public.lotes add column if not exists sublote text null;
 alter table public.lotes add column if not exists pallet_preasignado text null;
 alter table public.lotes add column if not exists cajas_preasignadas integer null;
 alter table public.lotes add column if not exists despacho_preasignado text null;
+alter table public.lotes add column if not exists cliente_preasignado text null;
 alter table public.lotes add column if not exists fecha_cosecha date;
 update public.lotes
 set fecha_cosecha = coalesce(fecha_cosecha, fecha_ingreso)

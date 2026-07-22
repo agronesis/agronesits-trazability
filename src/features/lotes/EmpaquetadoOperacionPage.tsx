@@ -19,7 +19,7 @@ import { createEmpaquetado, getResumenPalletsConVariedad, type ResumenPallet } f
 import { useAuthStore } from '@/store/auth.store'
 import { calcularCajasExportables, DEFAULT_PESO_CAJA_EXPORTACION_KG, getCajasPorPallet, normalizarNumeroPallet } from '@/utils/business-rules'
 import { formatFecha } from '@/utils/formatters'
-import { getTraceabilityCodeForDate, openPrintWindow, writeTraceabilityLabelCopies } from './printDespachoLabel'
+import { CLIENTES_EMPAQUETADO, getTraceabilityCodeForDate, openPrintWindow, writeTraceabilityLabelCopies } from './printDespachoLabel'
 import type { DestinoEmpaquetado, Lote, VariedadProducto } from '@/types/models'
 
 type FiltroVariedad = VariedadProducto | 'todos'
@@ -44,6 +44,7 @@ export type LoteEmpaquetadoResumen = {
   palletPreasignado: string | null
   cajasPreasignadas: number | null
   despachoPreasignado: string | null
+  clientePreasignado: string | null
 }
 
 function toLoteForTrazabilidad(item: LoteEmpaquetadoResumen): Lote {
@@ -90,6 +91,7 @@ export default function EmpaquetadoOperacionPage() {
   const [formCajas, setFormCajas] = useState('')
   const [formDespacho, setFormDespacho] = useState('')
   const [formDestino, setFormDestino] = useState<DestinoEmpaquetado>('europa')
+  const [formCliente, setFormCliente] = useState('')
   const [guardandoAsignacion, setGuardandoAsignacion] = useState(false)
   const [errorAsignacion, setErrorAsignacion] = useState<string | null>(null)
 
@@ -159,6 +161,7 @@ export default function EmpaquetadoOperacionPage() {
         palletPreasignado: row.pallet_preasignado,
         cajasPreasignadas: row.cajas_preasignadas,
         despachoPreasignado: row.despacho_preasignado,
+        clientePreasignado: row.cliente_preasignado,
       }
     }).sort((a, b) => {
       if (b.cajasExportables !== a.cajasExportables) return b.cajasExportables - a.cajasExportables
@@ -212,6 +215,7 @@ export default function EmpaquetadoOperacionPage() {
     setFormCajas(item.cajasPreasignadas != null ? String(item.cajasPreasignadas) : String(item.cajasExportables))
     setFormDespacho(item.despachoPreasignado ?? '')
     setFormDestino('europa')
+    setFormCliente(item.clientePreasignado ?? '')
     setErrorAsignacion(null)
   }
 
@@ -278,6 +282,11 @@ export default function EmpaquetadoOperacionPage() {
       return
     }
 
+    if (!formCliente) {
+      setErrorAsignacion('Selecciona el cliente del pallet.')
+      return
+    }
+
     const despacho = formDespacho.trim() || null
 
     setGuardandoAsignacion(true)
@@ -304,6 +313,7 @@ export default function EmpaquetadoOperacionPage() {
         pallet_preasignado: palletNorm,
         cajas_preasignadas: cajas,
         despacho_preasignado: despacho,
+        cliente_preasignado: formCliente,
       })
 
       setRows((prev) =>
@@ -315,6 +325,7 @@ export default function EmpaquetadoOperacionPage() {
                 pallet_preasignado: palletNorm,
                 cajas_preasignadas: cajas,
                 despacho_preasignado: despacho,
+                cliente_preasignado: formCliente,
                 empaquetados: [...normalizarArray(row.empaquetados), { num_cajas: cajas }],
               }
             : row
@@ -343,7 +354,7 @@ export default function EmpaquetadoOperacionPage() {
     if (!printWindow) return
     const loteTrazabilidad = toLoteForTrazabilidad(item)
     const codigo = getTraceabilityCodeForDate(loteTrazabilidad, fecha)
-    writeTraceabilityLabelCopies(printWindow, loteTrazabilidad, codigo, copias)
+    writeTraceabilityLabelCopies(printWindow, loteTrazabilidad, codigo, copias, item.clientePreasignado)
   }
 
   if (loading) return <LoadingPage />
@@ -601,7 +612,22 @@ export default function EmpaquetadoOperacionPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cliente</Label>
+                    <Select
+                      value={formCliente || undefined}
+                      onValueChange={(value) => { setFormCliente(value); setErrorAsignacion(null) }}
+                      disabled={yaAsignado}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
+                      <SelectContent>
+                        {CLIENTES_EMPAQUETADO.map((cliente) => (
+                          <SelectItem key={cliente} value={cliente}>{cliente}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
                     <Label className="text-xs">Cód. trazabilidad</Label>
                     <Input
                       value={codigoTrazabilidad}
