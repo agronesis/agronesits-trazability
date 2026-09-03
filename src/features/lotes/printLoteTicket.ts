@@ -3,6 +3,12 @@ import { formatFecha, formatPeso } from '@/utils/formatters'
 import { calcularPesoPorJaba } from '@/utils/business-rules'
 import type { Lote } from '@/types/models'
 
+/**
+ * Oculta temporalmente el bloque "Agricultor" (etiqueta y valor) del ticket.
+ * Poner en true para volver a imprimirlo.
+ */
+const MOSTRAR_AGRICULTOR: boolean = false
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -79,10 +85,12 @@ export function printLoteTicket(lote: Lote) {
           </section>
           ` : ''}
 
+          ${MOSTRAR_AGRICULTOR ? `
           <section class="block">
             <div class="label">Agricultor</div>
             <div class="value">${escapeHtml(`${lote.agricultor?.apellido ?? '-'}, ${lote.agricultor?.nombre ?? ''}`.trim())}</div>
           </section>
+          ` : ''}
 
           <section class="block">
             <div class="label">Acopiador</div>
