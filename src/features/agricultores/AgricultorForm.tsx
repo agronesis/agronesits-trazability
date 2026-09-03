@@ -46,6 +46,18 @@ export function AgricultorForm({ defaultValues, onSubmit, onCancel, isEditing }:
     reset(normalizedDefaults)
   }, [normalizedDefaults, reset])
 
+  // Los errores por elemento del array no viven en errors.sublotes.message,
+  // sino en cada indice; sin esto la validacion fallaba en silencio y el boton
+  // "Guardar cambios" no hacia nada.
+  const sublotesError = (() => {
+    const raiz = errors.sublotes
+    if (!raiz) return undefined
+    if (Array.isArray(raiz)) {
+      return raiz.find((item) => item?.message)?.message
+    }
+    return (raiz as { message?: string }).message
+  })()
+
   const handleValidSubmit = async (data: AgricultorFormInput) => {
     await onSubmit(agricultorSchema.parse(data) as AgricultorFormData)
   }
@@ -107,7 +119,7 @@ export function AgricultorForm({ defaultValues, onSubmit, onCancel, isEditing }:
         <Textarea placeholder="Sector, dirección o referencia..." rows={2} {...register('ubicacion')} />
       </FormField>
 
-      <FormField label="Sublotes">
+      <FormField label="Sublotes" error={sublotesError}>
         <Controller
           name="sublotes"
           control={control}

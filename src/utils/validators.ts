@@ -30,6 +30,17 @@ export const codigoSchema = z
   .regex(/^[A-Z0-9_-]+$/, 'Solo letras, números, guión o guión bajo')
   .transform((value) => value.toUpperCase())
 
+// Un sublote se crea automaticamente desde el lote (campo libre de hasta 30
+// caracteres), por eso aqui se acepta lo mismo: 1 caracter minimo y sin
+// restriccion de formato. Validarlo como codigoSchema bloqueaba la edicion de
+// agricultores con sublotes numericos de un digito ("1", "2", ...).
+export const subloteSchema = z
+  .string()
+  .trim()
+  .min(1, 'Ingrese el sublote')
+  .max(30, 'Maximo 30 caracteres')
+  .transform((value) => value.toUpperCase())
+
 export const nombreSchema = z
   .string()
   .trim()
@@ -79,7 +90,7 @@ export const agricultorSchema = z.object({
   numero_cuenta: z.preprocess(nullableUpperTrim, z.string().max(50, 'Maximo 50 caracteres').nullable()),
   fecha_alta: z.string().min(1, 'Ingrese la fecha de alta'),
   ubicacion: z.preprocess(nullableUpperTrim, z.string().max(200).nullable()),
-  sublotes: z.array(codigoSchema).max(100, 'Demasiados sublotes').optional().default([]),
+  sublotes: z.array(subloteSchema).max(100, 'Demasiados sublotes').optional().default([]),
   estado:    z.enum(['activo', 'inactivo']),
 })
 
