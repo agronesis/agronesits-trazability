@@ -46,7 +46,8 @@ export function printLoteTicket(lote: Lote) {
   const printWindow = window.open('', '_blank', 'width=420,height=720')
   if (!printWindow) return
 
-  const copias = ['AGRICULTOR', 'ACOPIO', 'PROCESO']
+  // La copia AGRICULTOR se retiro temporalmente; solo se imprimen ACOPIO y PROCESO
+  const copias = ['ACOPIO', 'PROCESO']
 
   const ticketBody = (copia: string) => `
         <main class="ticket">
