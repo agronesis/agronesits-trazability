@@ -153,6 +153,7 @@ export interface Database {
           centro_acopio_id: string
           fecha_ingreso: string
           fecha_cosecha: string
+          fecha_registro: string | null
           peso_bruto_kg: number
           peso_tara_kg: number
           peso_neto_kg: number
@@ -167,7 +168,7 @@ export interface Database {
           cliente_preasignado: string | null
           estado: 'ingresado' | 'en_clasificacion' | 'clasificado' | 'empaquetado' | 'en_despacho' | 'despachado' | 'liquidado'
         }
-        Insert: Omit<Database['public']['Tables']['lotes']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Insert: Omit<Database['public']['Tables']['lotes']['Row'], 'id' | 'created_at' | 'updated_at' | 'fecha_registro'>
         Update: Partial<Database['public']['Tables']['lotes']['Insert']>
         Relationships: []
       }

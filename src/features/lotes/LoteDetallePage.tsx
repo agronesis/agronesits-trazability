@@ -26,7 +26,7 @@ import {
   CALIDAD_PRODUCTO_CONFIG,
   TIPO_PRODUCCION_CONFIG,
 } from '@/constants'
-import { formatFecha, formatPeso, formatMoneda } from '@/utils/formatters'
+import { formatFecha, formatFechaHora, formatPeso, formatMoneda } from '@/utils/formatters'
 import { calcularPagoSeleccionador, calcularPesoPorJaba, normalizarNumeroPallet } from '@/utils/business-rules'
 import type { Lote, Clasificacion, Despacho, Empaquetado } from '@/types/models'
 import type { LoteFormData } from '@/utils/validators'
@@ -318,6 +318,10 @@ export default function LoteDetallePage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Fecha cosecha</p>
                     <p className="font-medium">{formatFecha(lote.fecha_cosecha)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Fecha de registro</p>
+                    <p className="font-medium">{formatFechaHora(lote.fecha_registro)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">N° Jabas ingresadas</p>

@@ -165,6 +165,30 @@ begin
 end;
 $$;
 
+create or replace function public.set_lote_fecha_registro()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.fecha_registro := now();
+  return new;
+end;
+$$;
+
+create or replace function public.protect_lote_fecha_registro()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Una vez sellada no se vuelve a tocar. Los lotes viejos quedaron en null y
+  -- ahi si se permite escribirla, por si algun dia se quiere completar a mano.
+  if old.fecha_registro is not null then
+    new.fecha_registro := old.fecha_registro;
+  end if;
+  return new;
+end;
+$$;
+
 create or replace function public.generate_centro_acopio_codigo()
 returns text
 language plpgsql
@@ -431,6 +455,7 @@ create table if not exists public.lotes (
   centro_acopio_id uuid not null references public.centros_acopio(id) on delete restrict,
   fecha_ingreso date not null,
   fecha_cosecha date not null default current_date,
+  fecha_registro timestamptz null default now(),
   peso_bruto_kg numeric(12,2) not null,
   peso_tara_kg numeric(12,2) not null default 0 check (peso_tara_kg >= 0),
   peso_neto_kg numeric(12,2) not null default 0 check (peso_neto_kg >= 0),
@@ -519,6 +544,14 @@ where peso_neto_kg is null;
 alter table public.lotes alter column peso_neto_kg set default 0;
 alter table public.lotes alter column peso_neto_kg set not null;
 alter table public.lotes add column if not exists jabas_prestadas integer not null default 0;
+
+-- Fecha/hora real en que el lote se guardo en el sistema. Se llena sola (default
+-- + trigger de insert) y no se puede editar despues. Los lotes registrados antes
+-- de existir esta columna quedan en null a proposito: por eso el add column va
+-- SIN default (un default en el add column rellenaria las filas existentes) y
+-- recien despues se le asigna el default para los nuevos.
+alter table public.lotes add column if not exists fecha_registro timestamptz;
+alter table public.lotes alter column fecha_registro set default now();
 
 alter table public.despachos add column if not exists tipo_despacho text not null default 'terrestre';
 do $$
@@ -762,6 +795,12 @@ create trigger trg_lotes_protect_codigo before update on public.lotes for each r
 
 drop trigger if exists trg_lotes_codigo on public.lotes;
 create trigger trg_lotes_codigo before insert on public.lotes for each row execute function public.set_lote_codigo();
+
+drop trigger if exists trg_lotes_fecha_registro on public.lotes;
+create trigger trg_lotes_fecha_registro before insert on public.lotes for each row execute function public.set_lote_fecha_registro();
+
+drop trigger if exists trg_lotes_protect_fecha_registro on public.lotes;
+create trigger trg_lotes_protect_fecha_registro before update on public.lotes for each row execute function public.protect_lote_fecha_registro();
 
 do $$
 declare

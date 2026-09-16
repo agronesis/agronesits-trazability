@@ -111,6 +111,7 @@ export interface Lote extends BaseEntity {
   centro_acopio_id: UUID
   fecha_ingreso: string           // ISO date
   fecha_cosecha: string           // ISO date
+  fecha_registro: string | null   // ISO datetime, lo pone la BD al guardar
   peso_bruto_kg: number
   peso_tara_kg: number
   peso_neto_kg: number
@@ -133,7 +134,7 @@ export interface Lote extends BaseEntity {
   centro_acopio?: CentroAcopio
 }
 
-export type LoteInsert = Omit<Lote, keyof BaseEntity | 'agricultor' | 'recepcionista' | 'acopiador' | 'acopiador_agricultor' | 'producto' | 'centro_acopio'>
+export type LoteInsert = Omit<Lote, keyof BaseEntity | 'fecha_registro' | 'agricultor' | 'recepcionista' | 'acopiador' | 'acopiador_agricultor' | 'producto' | 'centro_acopio'>
 export type LoteUpdate = Partial<LoteInsert>
 
 // ─────────────────────────────────────────────

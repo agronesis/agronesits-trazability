@@ -14,6 +14,10 @@ export const APP_PERMISSIONS = {
   PLANILLAS_PAY: 'planillas.pay',
   AGRICULTORES_VIEW: 'agricultores.view',
   AGRICULTORES_MANAGE: 'agricultores.manage',
+  // Exportar el padron completo (con DNI y numeros de cuenta) queda reservado a
+  // gerencia: no se agrega a ninguna otra lista de ROLE_PERMISSIONS, y admin y
+  // gerencia lo reciben por el atajo de hasPermission().
+  AGRICULTORES_EXPORT: 'agricultores.export',
   LOTES_VIEW: 'lotes.view',
   LOTES_CREATE: 'lotes.create',
   LOTES_DELETE: 'lotes.delete',

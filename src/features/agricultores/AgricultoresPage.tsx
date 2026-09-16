@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Pencil, Trash2, Phone, MapPin, LayoutGrid, List } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Phone, MapPin, LayoutGrid, List, Download } from 'lucide-react'
 import { useAgricultores } from './hooks/useAgricultores'
 import { AgricultorForm } from './AgricultorForm'
 import { getAgricultor } from '@/services/agricultores.service'
@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import type { Agricultor } from '@/types/models'
 import type { AgricultorFormData } from '@/utils/validators'
+import { generateAgricultoresExcel, type AgricultoresExportRow } from '@/utils/agricultores-excel'
 import { useAuthStore } from '@/store/auth.store'
 import { APP_PERMISSIONS, hasPermission } from '@/lib/permissions'
 
@@ -37,8 +38,10 @@ export default function AgricultoresPage() {
   const [tamanoPagina, setTamanoPagina] = useState(12)
   const [aEliminar, setAEliminar] = useState<string | null>(null)
   const [eliminando, setEliminando] = useState(false)
+  const [descargando, setDescargando] = useState(false)
   const { toasts, toast, remove } = useToast()
   const canManageAgricultores = hasPermission(roles, APP_PERMISSIONS.AGRICULTORES_MANAGE)
+  const canExportAgricultores = hasPermission(roles, APP_PERMISSIONS.AGRICULTORES_EXPORT)
 
   const q = busqueda.trim().toLowerCase()
   const filtrados = agricultores
@@ -120,6 +123,36 @@ export default function AgricultoresPage() {
     }
   }
 
+  const handleDescargar = () => {
+    if (!canExportAgricultores) return
+
+    if (filtrados.length === 0) {
+      toast('error', 'No hay agricultores para descargar.')
+      return
+    }
+
+    setDescargando(true)
+    try {
+      const rows: AgricultoresExportRow[] = filtrados.map((a) => ({
+        codigo: a.codigo,
+        apellidos: a.apellido,
+        nombres: a.nombre,
+        dni: a.dni ?? '',
+        telefono: a.telefono ?? '',
+        numeroCuenta: a.numero_cuenta ?? '',
+        fechaAlta: a.fecha_alta,
+        ubicacion: a.ubicacion ?? '',
+        estado: a.estado === 'activo' ? 'ACTIVO' : 'INACTIVO',
+      }))
+
+      generateAgricultoresExcel(rows)
+    } catch (e) {
+      toast('error', `No se pudo generar el Excel: ${(e as Error).message}`)
+    } finally {
+      setDescargando(false)
+    }
+  }
+
   const handleEliminar = async (id: string) => {
     if (!canManageAgricultores) return
     setEliminando(true)
@@ -150,10 +183,25 @@ export default function AgricultoresPage() {
       <ToastContainer toasts={toasts} onRemove={remove} />
       <PageHeader
         title="Agricultores"
-        actions={canManageAgricultores ? (
-          <Button onClick={abrirNuevo}>
-            <Plus className="h-4 w-4" /> Nuevo
-          </Button>
+        actions={canExportAgricultores || canManageAgricultores ? (
+          <div className="flex items-center gap-2">
+            {canExportAgricultores && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDescargar}
+                loading={descargando}
+                disabled={filtrados.length === 0 || descargando}
+              >
+                <Download className="h-4 w-4 mr-2" /> Exportar Excel ({filtrados.length})
+              </Button>
+            )}
+            {canManageAgricultores && (
+              <Button onClick={abrirNuevo}>
+                <Plus className="h-4 w-4" /> Nuevo
+              </Button>
+            )}
+          </div>
         ) : undefined}
       />
 
