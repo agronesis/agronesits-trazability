@@ -553,25 +553,6 @@ alter table public.lotes add column if not exists jabas_prestadas integer not nu
 alter table public.lotes add column if not exists fecha_registro timestamptz;
 alter table public.lotes alter column fecha_registro set default now();
 
-alter table public.despachos add column if not exists tipo_despacho text not null default 'terrestre';
-do $$
-begin
-  if not exists (
-    select 1 from information_schema.constraint_column_usage
-    where table_schema = 'public' and table_name = 'despachos' and constraint_name = 'despachos_tipo_despacho_check'
-  ) then
-    alter table public.despachos add constraint despachos_tipo_despacho_check
-      check (tipo_despacho in ('maritima', 'aerea', 'terrestre'));
-  end if;
-end;
-$$;
-alter table public.despachos drop column if exists numero_senasa;
-alter table public.despachos alter column lote_id drop not null;
-alter table public.despachos add column if not exists exportador text null;
-alter table public.despachos add column if not exists marca_caja text null;
-alter table public.despachos alter column precio_venta_kg set default 0;
-update public.despachos set precio_venta_kg = coalesce(precio_venta_kg, 0) where precio_venta_kg is null;
-alter table public.despachos alter column precio_venta_kg set not null;
 alter table public.agricultores drop column if exists ggn;
 
 create table if not exists public.clasificaciones (
@@ -658,6 +639,30 @@ begin
   end if;
 end;
 $$;
+
+-- Migraciones historicas de despachos. Iban antes del create table por
+-- como se fue acumulando el archivo; en una base limpia eso fallaba con
+-- 42P01. Movidas aca: el create table de arriba ya trae estas columnas,
+-- asi que en base nueva son no-ops y el archivo sigue siendo idempotente.
+alter table public.despachos add column if not exists tipo_despacho text not null default 'terrestre';
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.constraint_column_usage
+    where table_schema = 'public' and table_name = 'despachos' and constraint_name = 'despachos_tipo_despacho_check'
+  ) then
+    alter table public.despachos add constraint despachos_tipo_despacho_check
+      check (tipo_despacho in ('maritima', 'aerea', 'terrestre'));
+  end if;
+end;
+$$;
+alter table public.despachos drop column if exists numero_senasa;
+alter table public.despachos alter column lote_id drop not null;
+alter table public.despachos add column if not exists exportador text null;
+alter table public.despachos add column if not exists marca_caja text null;
+alter table public.despachos alter column precio_venta_kg set default 0;
+update public.despachos set precio_venta_kg = coalesce(precio_venta_kg, 0) where precio_venta_kg is null;
+alter table public.despachos alter column precio_venta_kg set not null;
 
 create table if not exists public.despacho_pallets (
   id uuid primary key default gen_random_uuid(),
