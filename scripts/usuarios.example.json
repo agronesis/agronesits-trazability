@@ -1,0 +1,10 @@
+[
+  { "email": "admin@agronesits.com",      "password": "CAMBIAR-clave-segura-1", "role": "admin" },
+  { "email": "gerencia@agronesits.com",   "password": "CAMBIAR-clave-segura-2", "role": "gerencia" },
+  { "email": "planta@agronesits.com",     "password": "CAMBIAR-clave-segura-3", "role": "administrador_planta" },
+  { "email": "padron@agronesits.com",     "password": "CAMBIAR-clave-segura-4", "role": "padron_agricultores" },
+  { "email": "tesoreria@agronesits.com",  "password": "CAMBIAR-clave-segura-5", "role": "tesoreria" },
+  { "email": "recepcion@agronesits.com",  "password": "CAMBIAR-clave-segura-6", "role": "operativo_recepcion" },
+  { "email": "operario@agronesits.com",   "password": "CAMBIAR-clave-segura-7", "role": "operativo_planta" },
+  { "email": "despacho@agronesits.com",   "password": "CAMBIAR-clave-segura-8", "role": "operativo_planta_despacho" }
+]
