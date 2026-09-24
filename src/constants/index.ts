@@ -109,6 +109,7 @@ export const ROUTES = {
   CONFIG_PRECIOS:           '/admin/config-precios',
   CONFIG_PARAMETROS:        '/admin/config-parametros',
   AUDIT_LOG:                '/gerencia/audit-log',
+  BACKUP:                   '/gerencia/respaldo',
 } as const
 
 // Controla módulos habilitados en UI/ruteo.

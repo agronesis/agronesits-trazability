@@ -28,6 +28,9 @@ export const APP_PERMISSIONS = {
   DESPACHOS_VIEW: 'despachos.view',
   DESPACHOS_MANAGE: 'despachos.manage',
   AUDIT_VIEW: 'audit.view',
+  // Descarga el contenido completo de la base. Quien la tenga se lleva DNI y
+  // numeros de cuenta de todo el padron, asi que va aparte de los demas roles.
+  BACKUP_EXPORT: 'backup.export',
 } as const
 
 export type AppPermission = (typeof APP_PERMISSIONS)[keyof typeof APP_PERMISSIONS]
@@ -82,6 +85,8 @@ const ROLE_PERMISSIONS: Record<string, AppPermission[]> = {
     APP_PERMISSIONS.LOTES_PRINT_LABELS,
     APP_PERMISSIONS.LOTES_PROCESS,
   ],
+  // Cuenta tecnica: lo unico que ve es la pantalla de respaldo.
+  [APP_ROLES.SISTEMAS]: [APP_PERMISSIONS.BACKUP_EXPORT],
   [APP_ROLES.OPERATIVO_PLANTA_DESPACHO]: [
     APP_PERMISSIONS.DASHBOARD_VIEW,
     APP_PERMISSIONS.LOTES_VIEW,
@@ -121,6 +126,7 @@ const ROUTE_PERMISSIONS: Record<string, AppPermission> = {
   [ROUTES.CONFIG_PRECIOS]: APP_PERMISSIONS.CONFIG_PRECIOS_MANAGE,
   [ROUTES.CONFIG_PARAMETROS]: APP_PERMISSIONS.CONFIG_PARAMETROS_MANAGE,
   [ROUTES.AUDIT_LOG]: APP_PERMISSIONS.AUDIT_VIEW,
+  [ROUTES.BACKUP]: APP_PERMISSIONS.BACKUP_EXPORT,
 }
 
 export function hasPermission(roles: AppRole[], permission: AppPermission): boolean {
@@ -168,6 +174,7 @@ export function getDefaultRouteForRoles(roles: AppRole[]): string {
     ROUTES.LIQUIDACIONES_AGRI,
     ROUTES.LOTES,
     ROUTES.AGRICULTORES,
+    ROUTES.BACKUP,
   ]
 
   return candidates.find((route) => canAccessRoute(roles, route)) ?? ROUTES.LOGIN

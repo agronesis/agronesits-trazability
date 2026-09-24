@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Package, Warehouse,
   Layers, Receipt, Truck, Settings,
-  LogOut, ChevronLeft, Leaf, X, ClipboardList,
+  LogOut, ChevronLeft, Leaf, X, ClipboardList, DatabaseBackup,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Parámetros Sistema',  href: ROUTES.CONFIG_PARAMETROS,     icon: Settings,      group: 'Admin' },
   // Gerencia
   { label: 'Logs de Auditoría',   href: ROUTES.AUDIT_LOG,             icon: ClipboardList, group: 'Gerencia' },
+  { label: 'Respaldo',            href: ROUTES.BACKUP,                icon: DatabaseBackup, group: 'Gerencia' },
 ]
 
 // Agrupar ítems

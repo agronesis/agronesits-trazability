@@ -9,6 +9,7 @@ export const APP_ROLES = {
   OPERATIVO_RECEPCION: 'operativo_recepcion',
   OPERATIVO_PLANTA: 'operativo_planta',
   OPERATIVO_PLANTA_DESPACHO: 'operativo_planta_despacho',
+  SISTEMAS: 'sistemas',
 } as const
 
 export type AppRole = string
