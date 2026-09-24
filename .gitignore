@@ -26,3 +26,8 @@ dist-ssr
 .env.backup-*
 .env.local
 scripts/usuarios.json
+
+# Planillas de datos: llevan DNI y numeros de cuenta, nunca al repo
+*.xlsx
+*.xls
+*.csv
