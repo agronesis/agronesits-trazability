@@ -32,6 +32,7 @@ const ROLES_VALIDOS = [
   'operativo_recepcion',
   'operativo_planta',
   'operativo_planta_despacho',
+  'sistemas',
 ]
 
 function leerEnv() {
@@ -49,7 +50,13 @@ function leerEnv() {
 
 const env = leerEnv()
 const url = process.env.SUPABASE_URL || env.VITE_SUPABASE_URL
-const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+// Al pegar la llave en PowerShell es facil que entren comillas o espacios;
+// cualquiera de los dos invalida la cabecera Authorization.
+function limpiarLlave(valor) {
+  return (valor ?? '').trim().replace(/^["']|["']$/g, '').trim()
+}
+
+const secret = limpiarLlave(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
 
 if (!url) {
   console.error('ERROR: falta VITE_SUPABASE_URL en .env (o SUPABASE_URL en el entorno).')
@@ -106,6 +113,28 @@ if (dryRun) {
   usuarios.forEach((u) => console.log(`  ${u.email.padEnd(34)} -> ${u.role}`))
   console.log('\nValidacion OK. Corre sin --dry-run para crearlos.')
   process.exit(0)
+}
+
+// Una sola llamada de prueba antes de empezar: si la llave no sirve, lo dice
+// una vez y con el motivo, en vez de repetir el mismo 401 por cada usuario.
+const prueba = await fetch(`${url}/auth/v1/admin/users?page=1&per_page=1`, {
+  headers: { apikey: secret, Authorization: `Bearer ${secret}` },
+})
+
+if (!prueba.ok) {
+  console.error(`ERROR: la llave no sirve para el API de administracion (HTTP ${prueba.status}).`)
+  console.error(`  respuesta: ${(await prueba.text()).slice(0, 160)}`)
+  console.error(`  llave recibida: ${secret.slice(0, 12)}... (${secret.length} caracteres)`)
+  console.error('')
+  if (secret.startsWith('sb_publishable_')) {
+    console.error('  Esa es la llave PUBLICA (publishable). Solo sirve para leer y escribir')
+    console.error('  datos como un usuario normal; no puede dar de alta usuarios.')
+  }
+  console.error('  Hace falta la SECRETA: Dashboard -> Project Settings -> API Keys ->')
+  console.error('  secret key. Empieza con sb_secret_ y esta oculta tras un boton Reveal.')
+  console.error('  PowerShell:  $env:SUPABASE_SECRET_KEY = "sb_secret_..."')
+  console.error('  y en la MISMA ventana:  node scripts/crear-usuarios.mjs')
+  process.exit(1)
 }
 
 let creados = 0
